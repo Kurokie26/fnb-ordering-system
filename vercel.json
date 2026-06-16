@@ -5,7 +5,7 @@
   "routes": [
     { "src": "/guest", "dest": "/guest.html" },
     { "src": "/staff", "dest": "/staff.html" },
-    { "src": "/", "dest": "/guest.html" }
+    { "src": "/", "dest": "/index.html" }
   ],
   "headers": [
     {

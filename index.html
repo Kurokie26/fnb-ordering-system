@@ -3,381 +3,488 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aetheria Bistro - F&B Ordering & Operating System</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Aetheria Bistro — F&B Ordering System</title>
+  <meta name="description" content="Aetheria Bistro — Premium Food & Beverage Ordering System. Guest dining portal and staff backoffice.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-secondary: #121826;
+      --bg-card: rgba(26, 32, 49, 0.75);
+      --border-color: rgba(255, 255, 255, 0.06);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --color-primary: #f59e0b;
+      --color-info: #0ea5e9;
+      --color-success: #10b981;
+      --color-purple: #8b5cf6;
+      --font: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --radius: 20px;
+      --transition: 0.3s ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated Background ── */
+    .bg-orbs {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.07;
+      animation: drift 12s ease-in-out infinite alternate;
+    }
+
+    .orb-1 { width: 500px; height: 500px; background: var(--color-primary); top: -100px; left: -100px; animation-delay: 0s; }
+    .orb-2 { width: 400px; height: 400px; background: var(--color-purple); bottom: -80px; right: -80px; animation-delay: -4s; }
+    .orb-3 { width: 300px; height: 300px; background: var(--color-info); top: 50%; left: 50%; transform: translate(-50%,-50%); animation-delay: -8s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(40px, 30px) scale(1.08); }
+    }
+
+    /* ── Header ── */
+    header {
+      position: relative;
+      z-index: 10;
+      padding: 28px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(18, 24, 38, 0.6);
+      backdrop-filter: blur(12px);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      background: linear-gradient(135deg, var(--color-primary), #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-emoji { -webkit-text-fill-color: initial; font-size: 26px; }
+
+    .header-tag {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-color);
+      padding: 5px 14px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Hero Section ── */
+    .hero {
+      position: relative;
+      z-index: 5;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      color: var(--color-primary);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      margin-bottom: 28px;
+      animation: fadeSlideDown 0.6s ease both;
+    }
+
+    .hero-title {
+      font-size: clamp(36px, 6vw, 68px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      margin-bottom: 20px;
+      animation: fadeSlideDown 0.7s ease 0.1s both;
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, var(--color-primary) 0%, #fbbf24 50%, var(--color-purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      font-size: 16px;
+      color: var(--text-secondary);
+      max-width: 520px;
+      line-height: 1.7;
+      margin-bottom: 56px;
+      animation: fadeSlideDown 0.7s ease 0.2s both;
+    }
+
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Portal Cards ── */
+    .portals-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      width: 100%;
+      max-width: 780px;
+      animation: fadeSlideUp 0.7s ease 0.3s both;
+    }
+
+    @media (min-width: 640px) {
+      .portals-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .portal-card {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 36px 32px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all var(--transition);
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+
+    .portal-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .portal-card.guest::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.08) 0%, transparent 70%);
+    }
+
+    .portal-card.staff::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(14, 165, 233, 0.08) 0%, transparent 70%);
+    }
+
+    .portal-card:hover::before { opacity: 1; }
+
+    .portal-card.guest:hover {
+      border-color: rgba(245, 158, 11, 0.35);
+      transform: translateY(-6px);
+      box-shadow: 0 24px 48px rgba(245, 158, 11, 0.12), 0 0 0 1px rgba(245, 158, 11, 0.1);
+    }
+
+    .portal-card.staff:hover {
+      border-color: rgba(14, 165, 233, 0.35);
+      transform: translateY(-6px);
+      box-shadow: 0 24px 48px rgba(14, 165, 233, 0.12), 0 0 0 1px rgba(14, 165, 233, 0.1);
+    }
+
+    .portal-icon-wrap {
+      width: 80px;
+      height: 80px;
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      margin-bottom: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .portal-card.guest .portal-icon-wrap {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.15);
+    }
+
+    .portal-card.staff .portal-icon-wrap {
+      background: rgba(14, 165, 233, 0.08);
+      border: 1px solid rgba(14, 165, 233, 0.15);
+    }
+
+    .portal-title {
+      font-size: 22px;
+      font-weight: 700;
+      position: relative;
+      z-index: 1;
+    }
+
+    .portal-desc {
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      position: relative;
+      z-index: 1;
+    }
+
+    .portal-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      margin: 8px 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .portal-features li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      text-align: left;
+      padding: 5px 10px;
+      background: rgba(255,255,255,0.025);
+      border-radius: 8px;
+    }
+
+    .portal-features li .feat-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .portal-card.guest .feat-dot { background: var(--color-primary); }
+    .portal-card.staff .feat-dot  { background: var(--color-info); }
+
+    .portal-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .portal-card.guest .portal-btn {
+      background: var(--color-primary);
+      color: #000;
+    }
+
+    .portal-card.guest .portal-btn:hover {
+      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
+      transform: scale(1.02);
+    }
+
+    .portal-card.staff .portal-btn {
+      background: var(--color-info);
+      color: #000;
+    }
+
+    .portal-card.staff .portal-btn:hover {
+      box-shadow: 0 8px 24px rgba(14, 165, 233, 0.35);
+      transform: scale(1.02);
+    }
+
+    /* ── Flow Strip ── */
+    .flow-strip {
+      position: relative;
+      z-index: 5;
+      padding: 32px 24px;
+      border-top: 1px solid var(--border-color);
+      background: rgba(18, 24, 38, 0.5);
+      backdrop-filter: blur(8px);
+    }
+
+    .flow-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .flow-step-icon { font-size: 16px; }
+
+    .flow-arrow {
+      color: var(--text-muted);
+      font-size: 16px;
+      padding: 0 6px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      position: relative;
+      z-index: 5;
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-color);
+    }
+
+    footer a { color: var(--color-primary); text-decoration: none; }
+  </style>
 </head>
 <body>
 
-  <!-- App Header -->
-  <header class="app-header">
-    <div class="brand-section">
-      <div class="brand-logo">
-        <span>🌌</span> AETHERIA BISTRO
-      </div>
-      <div class="brand-tagline">
-        F&B Ordering & Operating System Simulator
-      </div>
+  <!-- Background Orbs -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <span class="logo-emoji">🌌</span>
+      AETHERIA BISTRO
     </div>
-    <div class="system-controls">
-      <span id="session-badge" style="display: none; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.04); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color);">
-        👤 Role: <span id="session-role-text" style="color: var(--color-primary);">None</span>
-      </span>
-      <button class="btn-reset" id="logout-btn" style="display: none; background: rgba(244, 63, 94, 0.1); border-color: rgba(244, 63, 94, 0.25);" onclick="logout()">
-        Exit 🚪
-      </button>
-      <button class="btn-reset" id="reset-system-btn" onclick="systemReset()">
-        <span>🔄</span> Reset Simulator
-      </button>
-    </div>
+    <div class="header-tag">F&amp;B Ordering System v2.0</div>
   </header>
 
-  <!-- Login Gate Overlay -->
-  <div id="login-gate-screen" class="login-gate">
-    <div class="login-box">
-      <div class="login-header">
-        <span style="font-size: 48px; display: block; margin-bottom: 12px;">🌌</span>
-        <h2>AETHERIA BISTRO</h2>
-        <p>Operational Access & Dining Portal</p>
-      </div>
-      
-      <div class="login-portals">
-        <!-- Guest Portal -->
-        <div class="login-portal-card">
-          <div class="portal-icon">🍽️</div>
-          <h3>Guest Dining</h3>
-          <p>Browse our chef-curated menu, place orders, track status, and complete payment directly from your table.</p>
-          
-          <div class="form-group" style="margin-top: 16px; width: 100%; display: flex; flex-direction: column; gap: 6px;">
-            <label for="gate-table-input" style="font-size: 12px; color: var(--text-secondary); text-align: left; font-weight: 500;">TABLE / ROOM NO:</label>
-            <input type="text" id="gate-table-input" class="form-control" style="text-align: center; font-size: 20px; font-weight: 700; color: var(--color-primary);" value="5" maxlength="4">
-          </div>
-          
-          <button class="btn-form-submit" style="margin-top: 20px; width: 100%;" onclick="loginAsGuest()">
-            Enter Dining Kiosk 📱
-          </button>
-        </div>
-        
-        <!-- Staff Portal -->
-        <div class="login-portal-card" style="border-top: 1px solid rgba(255,255,255,0.02);">
-          <div class="portal-icon">🔑</div>
-          <h3>Staff Backoffice</h3>
-          <p>Access preparation queue, delivery dispatch runs, menu editor, and financial sales ledger.</p>
-          
-          <form id="staff-login-form" onsubmit="loginAsStaff(event)" style="width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
-            <div class="form-group" style="display:flex; flex-direction:column; gap:6px;">
-              <label for="gate-username" style="font-size: 11px; color: var(--text-secondary); text-align: left;">USERNAME</label>
-              <input type="text" id="gate-username" class="form-control" placeholder="admin" required autocomplete="username">
-            </div>
-            
-            <div class="form-group" style="display:flex; flex-direction:column; gap:6px;">
-              <label for="gate-password" style="font-size: 11px; color: var(--text-secondary); text-align: left;">PASSWORD</label>
-              <input type="password" id="gate-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
-            </div>
-            
-            <button type="submit" class="btn-form-submit" style="width: 100%; background: var(--color-info); color: black;">
-              Staff Login 💼
-            </button>
-          </form>
-          <div style="font-size: 10px; color: var(--text-muted); margin-top: 10px; text-align: center;">
-            Demo Sign-in: <strong>admin</strong> / <strong>admin</strong>
-          </div>
-        </div>
-      </div>
+  <!-- Hero -->
+  <main class="hero">
+    <div class="hero-badge">
+      ✨ Premium Dining Experience
+    </div>
+
+    <h1 class="hero-title">
+      Where Would You<br><span>Like to Go?</span>
+    </h1>
+
+    <p class="hero-sub">
+      Choose your portal below. Guests can browse the menu and place orders directly from their table. Staff can manage the kitchen, dispatch deliveries, and control the menu.
+    </p>
+
+    <!-- Portal Cards -->
+    <div class="portals-grid">
+
+      <!-- Guest Portal -->
+      <a href="guest.html" class="portal-card guest">
+        <div class="portal-icon-wrap">🍽️</div>
+        <div class="portal-title">Guest Dining</div>
+        <p class="portal-desc">Order food from your table and track your delivery in real time.</p>
+        <ul class="portal-features">
+          <li><span class="feat-dot"></span> Browse full menu by category</li>
+          <li><span class="feat-dot"></span> Cart & instant checkout</li>
+          <li><span class="feat-dot"></span> Live order status tracker</li>
+          <li><span class="feat-dot"></span> Card or room bill payment</li>
+        </ul>
+        <button class="portal-btn">
+          🚀 Open Guest Portal
+        </button>
+      </a>
+
+      <!-- Staff Portal -->
+      <a href="staff.html" class="portal-card staff">
+        <div class="portal-icon-wrap">💼</div>
+        <div class="portal-title">Staff Backoffice</div>
+        <p class="portal-desc">Manage kitchen prep, dispatch deliveries, and run the operations dashboard.</p>
+        <ul class="portal-features">
+          <li><span class="feat-dot"></span> Kitchen prep kanban board</li>
+          <li><span class="feat-dot"></span> Delivery dispatch checklist</li>
+          <li><span class="feat-dot"></span> Menu editor & stock control</li>
+          <li><span class="feat-dot"></span> Sales & financials ledger</li>
+        </ul>
+        <button class="portal-btn">
+          🔑 Staff Login
+        </button>
+      </a>
+
+    </div>
+  </main>
+
+  <!-- Order Flow Strip -->
+  <div class="flow-strip">
+    <div class="flow-inner">
+      <div class="flow-step"><span class="flow-step-icon">📱</span> Guest Orders</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><span class="flow-step-icon">🍳</span> Kitchen Prepares</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><span class="flow-step-icon">📋</span> Staff Checklist</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><span class="flow-step-icon">🛵</span> Delivery Dispatched</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><span class="flow-step-icon">🛎️</span> Guest Confirms</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><span class="flow-step-icon">💳</span> Payment & Close</div>
     </div>
   </div>
 
-  <!-- Core App Container -->
-  <div class="app-container">
-    
-    <!-- Sidebar: Role Switcher & Live Activity Stream -->
-    <aside class="sidebar">
-      <div>
-        <div class="sidebar-title" id="sidebar-role-title">Simulator Control</div>
-        <nav class="role-nav">
-          <a class="nav-item active guest-nav" data-screen="guest-kiosk-screen" onclick="switchScreen('guest-kiosk-screen')">
-            <span class="nav-item-left">
-              <span class="nav-icon">📱</span>
-              <span>Guest Kiosk</span>
-            </span>
-          </a>
-          
-          <a class="nav-item staff-nav" data-screen="kitchen-monitor-screen" onclick="switchScreen('kitchen-monitor-screen')">
-            <span class="nav-item-left">
-              <span class="nav-icon">🍳</span>
-              <span>Kitchen Monitor</span>
-            </span>
-            <span class="nav-badge" id="kitchen-badge" style="display: none;">0</span>
-          </a>
-          
-          <a class="nav-item staff-nav" data-screen="delivery-dispatch-screen" onclick="switchScreen('delivery-dispatch-screen')">
-            <span class="nav-item-left">
-              <span class="nav-icon">🛵</span>
-              <span>Delivery Dispatch</span>
-            </span>
-            <span class="nav-badge info" id="delivery-badge" style="display: none;">0</span>
-          </a>
-          
-          <a class="nav-item guest-nav" data-screen="guest-receiver-screen" onclick="switchScreen('guest-receiver-screen')">
-            <span class="nav-item-left">
-              <span class="nav-icon">🛎️</span>
-              <span>Guest Receiver</span>
-            </span>
-            <span class="nav-badge success" id="receiver-badge" style="display: none;">0</span>
-          </a>
-          
-          <a class="nav-item staff-nav" data-screen="admin-manager-screen" onclick="switchScreen('admin-manager-screen')">
-            <span class="nav-item-left">
-              <span class="nav-icon">⚙️</span>
-              <span>Menu & Sales</span>
-            </span>
-          </a>
+  <!-- Footer -->
+  <footer>
+    Aetheria Bistro F&amp;B System &nbsp;·&nbsp;
+    <a href="guest.html">Guest Portal</a> &nbsp;·&nbsp;
+    <a href="staff.html">Staff Backoffice</a>
+  </footer>
 
-          <a class="nav-item" style="margin-top: 20px; border-color: rgba(244, 63, 94, 0.1); color: var(--color-danger);" onclick="logout()">
-            <span class="nav-item-left">
-              <span class="nav-icon">🚪</span>
-              <span>Exit Portal</span>
-            </span>
-          </a>
-        </nav>
-      </div>
-      
-      <!-- Live Log Box -->
-      <div class="activity-log-container">
-        <div class="activity-header">
-          <span>Live Operations Log</span>
-          <span style="font-size: 9px; opacity: 0.6;">Realtime</span>
-        </div>
-        <div class="activity-logs" id="activity-logs-container">
-          <!-- Log lines will append here -->
-        </div>
-      </div>
-    </aside>
-
-    <!-- Main Dynamic Display Viewport -->
-    <main class="main-display">
-      
-      <!-- =======================================
-           1. GUEST KIOSK / TABLET SCREEN
-           ======================================= -->
-      <section id="guest-kiosk-screen" class="screen-container active">
-        <div class="screen-header">
-          <div class="screen-title">
-            <h2>Guest Ordering Tablet</h2>
-            <p>Select your favorite dishes and place your order</p>
-          </div>
-          <div class="table-selector-box">
-            <label for="table-num-input">TABLE / ROOM NO:</label>
-            <input type="text" id="table-num-input" class="table-input" value="5" maxlength="4" oninput="updateTableNum(this.value)">
-          </div>
-        </div>
-
-        <div class="kiosk-layout">
-          <!-- Left menu area -->
-          <div class="kiosk-main-content">
-            <div class="kiosk-controls">
-              <div class="categories-bar" id="kiosk-categories-bar">
-                <!-- Categories tabs: All, Mains, Drinks, etc. -->
-              </div>
-            </div>
-            
-            <div class="menu-grid" id="kiosk-menu-grid">
-              <!-- Menu cards will render here -->
-            </div>
-          </div>
-          
-          <!-- Right Cart Sidebar -->
-          <div class="cart-sidebar">
-            <div class="cart-header">
-              <h3>🛍️ Your Selection</h3>
-              <button class="btn-reset" style="padding: 4px 8px; font-size: 11px;" onclick="clearCart()">Clear</button>
-            </div>
-            
-            <div class="cart-items-list" id="cart-items-container">
-              <!-- Cart items will render here -->
-            </div>
-            
-            <div class="cart-footer">
-              <div class="summary-row">
-                <span>Subtotal</span>
-                <span id="cart-subtotal">$0.00</span>
-              </div>
-              <div class="summary-row">
-                <span>Tax (8%)</span>
-                <span id="cart-tax">$0.00</span>
-              </div>
-              <div class="summary-row total">
-                <span>Total</span>
-                <span id="cart-total">$0.00</span>
-              </div>
-              
-              <button class="btn-checkout" id="btn-place-order" onclick="placeOrder()">
-                🚀 Place Order for Table <span id="cart-table-no">5</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- =======================================
-           2. KITCHEN MONITOR SCREEN
-           ======================================= -->
-      <section id="kitchen-monitor-screen" class="screen-container">
-        <div class="screen-header">
-          <div class="screen-title">
-            <h2>Kitchen Preparation Queue</h2>
-            <p>Monitor, accept, and prepare orders</p>
-          </div>
-        </div>
-        
-        <div class="kitchen-kanban">
-          <!-- Pending Col -->
-          <div class="kitchen-col">
-            <div class="kitchen-col-header">
-              <h3>📥 Pending Orders</h3>
-              <span class="col-badge pending" id="kitchen-pending-count">0</span>
-            </div>
-            <div id="kitchen-pending-container" style="display:flex; flex-direction:column; gap:16px;">
-              <!-- Cards here -->
-            </div>
-          </div>
-          
-          <!-- Preparing Col -->
-          <div class="kitchen-col">
-            <div class="kitchen-col-header">
-              <h3>👨‍🍳 Preparing</h3>
-              <span class="col-badge preparing" id="kitchen-preparing-count">0</span>
-            </div>
-            <div id="kitchen-preparing-container" style="display:flex; flex-direction:column; gap:16px;">
-              <!-- Cards here -->
-            </div>
-          </div>
-          
-          <!-- Ready/Completed Col -->
-          <div class="kitchen-col">
-            <div class="kitchen-col-header">
-              <h3>📦 Ready for Delivery</h3>
-              <span class="col-badge ready" id="kitchen-ready-count">0</span>
-            </div>
-            <div id="kitchen-ready-container" style="display:flex; flex-direction:column; gap:16px;">
-              <!-- Cards here -->
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- =======================================
-           3. DELIVERY DISPATCH SCREEN
-           ======================================= -->
-      <section id="delivery-dispatch-screen" class="screen-container">
-        <div class="screen-header">
-          <div class="screen-title">
-            <h2>Delivery Dispatch App</h2>
-            <p>Deliver orders to tables/rooms. Run the delivery & paid checklist</p>
-          </div>
-        </div>
-        
-        <div class="delivery-dispatch-layout" id="delivery-dispatch-grid">
-          <!-- Active delivery jobs render here -->
-        </div>
-      </section>
-
-      <!-- =======================================
-           4. GUEST RECEIVER SCREEN
-           ======================================= -->
-      <section id="guest-receiver-screen" class="screen-container">
-        <div class="screen-header">
-          <div class="screen-title">
-            <h2>Guest Receiver & Payment Panel</h2>
-            <p>Confirm food delivery and select your payment preference</p>
-          </div>
-        </div>
-        
-        <div id="guest-receiver-content">
-          <!-- Receiver flow content: Waiting, Confirm Receipt, Payment, Checkout Receipt -->
-        </div>
-      </section>
-
-      <!-- =======================================
-           5. ADMIN MANAGER SCREEN
-           ======================================= -->
-      <section id="admin-manager-screen" class="screen-container">
-        <div class="screen-header">
-          <div class="screen-title">
-            <h2>Menu & Operations Manager</h2>
-            <p>Manage products, view real-time statistics, and inspect ledger</p>
-          </div>
-        </div>
-        
-        <div class="admin-tabs">
-          <button class="admin-tab-btn active" id="btn-tab-menu" onclick="switchAdminTab('menu')">Menu Management</button>
-          <button class="admin-tab-btn" id="btn-tab-sales" onclick="switchAdminTab('sales')">Sales & Financials</button>
-        </div>
-
-        <div class="admin-layout">
-          <!-- Left side: List of Menu Items or Sales Ledger -->
-          <div id="admin-main-pane">
-            <!-- Rendered dynamically (menu table or sales stats) -->
-          </div>
-          
-          <!-- Right side: Add/Edit form -->
-          <div id="admin-side-pane">
-            <!-- Form to add menu item -->
-            <div class="admin-form-card" id="admin-form-container">
-              <h3 class="form-title" id="form-action-title">Add Menu Item</h3>
-              <form id="menu-item-form" onsubmit="saveMenuItem(event)">
-                <input type="hidden" id="edit-item-id" value="">
-                
-                <div class="form-group">
-                  <label for="item-name">Item Name</label>
-                  <input type="text" id="item-name" class="form-control" placeholder="e.g. Garlic Toast" required>
-                </div>
-                
-                <div class="form-group" style="margin-top: 10px;">
-                  <label for="item-price">Price ($)</label>
-                  <input type="number" id="item-price" class="form-control" step="0.01" min="0" placeholder="e.g. 5.99" required>
-                </div>
-                
-                <div class="form-group" style="margin-top: 10px;">
-                  <label for="item-category">Category</label>
-                  <select id="item-category" class="form-control" required>
-                    <option value="Mains">Mains</option>
-                    <option value="Drinks">Drinks</option>
-                    <option value="Desserts">Desserts</option>
-                    <option value="Sides">Sides</option>
-                  </select>
-                </div>
-                
-                <div class="form-group" style="margin-top: 10px;">
-                  <label for="item-image">Emoji/Icon</label>
-                  <input type="text" id="item-image" class="form-control" placeholder="e.g. 🍞 or 🍹" required>
-                </div>
-                
-                <div class="form-group" style="margin-top: 10px;">
-                  <label for="item-desc">Description</label>
-                  <textarea id="item-desc" class="form-control" rows="3" placeholder="Describe the ingredients/flavors..." required></textarea>
-                </div>
-                
-                <button type="submit" class="btn-form-submit" style="margin-top: 16px; width: 100%;">
-                  Save Menu Item
-                </button>
-                <button type="button" class="btn-reset" id="btn-cancel-edit" style="margin-top: 10px; width: 100%; display: none;" onclick="cancelEditMenuItem()">
-                  Cancel Edit
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </section>
-
-    </main>
-
-  </div>
-
-  <!-- Toast Notification Container -->
-  <div class="toast-container" id="toast-container"></div>
-
-  <!-- Load Data and Main Script -->
-  <script src="menu-data.js"></script>
-  <script src="app.js"></script>
 </body>
 </html>
