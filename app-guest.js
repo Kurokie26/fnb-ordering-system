@@ -78,21 +78,32 @@ function initData() {
 // Session Gate Management
 function applyGuestSession() {
   const gate = document.getElementById('login-gate-screen');
+  const topbar = document.getElementById('guest-topbar');
+  const main = document.getElementById('guest-main');
+  const tabbar = document.getElementById('guest-tabbar');
   const sessionBadge = document.getElementById('session-badge');
   const sessionText = document.getElementById('session-role-text');
-  
+  const tablePill = document.getElementById('table-pill-num');
+
   if (!gate) return;
 
   if (currentUserRole !== 'guest') {
     gate.style.display = 'flex';
+    if (topbar) topbar.style.display = 'none';
+    if (main) main.style.display = 'none';
+    if (tabbar) tabbar.style.display = 'none';
     if (sessionBadge) sessionBadge.style.display = 'none';
   } else {
     gate.style.display = 'none';
+    if (topbar) topbar.style.display = 'flex';
+    if (main) main.style.display = 'block';
+    if (tabbar) tabbar.style.display = 'flex';
+    if (tablePill) tablePill.textContent = currentTableNum;
     if (sessionBadge) {
       sessionBadge.style.display = 'inline-flex';
       if (sessionText) sessionText.textContent = `Table ${currentTableNum}`;
     }
-    
+
     // Default to the kiosk screen
     switchScreen('guest-kiosk-screen');
   }
@@ -188,13 +199,21 @@ function switchScreen(screenId) {
 }
 
 function updateNavBadges() {
-  // Check if there are active items in-transit or arrived
-  const receiverCount = orders.filter(o => o.table === currentTableNum && 
+  // Receiver badge dot
+  const receiverCount = orders.filter(o => o.table === currentTableNum &&
     (o.status === 'out_for_delivery' || o.status === 'delivered' || o.status === 'confirmed')).length;
   const rBadge = document.getElementById('receiver-badge');
   if (rBadge) {
-    rBadge.textContent = receiverCount;
-    rBadge.style.display = receiverCount > 0 ? 'inline-block' : 'none';
+    rBadge.style.display = receiverCount > 0 ? 'block' : 'none';
+  }
+
+  // Floating cart button
+  const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
+  const floatingBtn = document.getElementById('floating-cart-btn');
+  const floatingCount = document.getElementById('floating-cart-count');
+  if (floatingBtn) {
+    floatingBtn.style.display = cartCount > 0 && currentUserRole === 'guest' ? 'flex' : 'none';
+    if (floatingCount) floatingCount.textContent = cartCount;
   }
 }
 
@@ -368,7 +387,11 @@ function placeOrder() {
     showToast("Please enter a valid Table or Room number.", "danger");
     return;
   }
-  
+
+  // Close cart modal if open (guest.html specific)
+  const cartOverlay = document.getElementById('cart-modal-overlay');
+  if (cartOverlay) cartOverlay.classList.remove('open');
+
   const itemIds = Object.keys(cart);
   if (itemIds.length === 0) return;
   
