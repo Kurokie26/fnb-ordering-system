@@ -76,6 +76,8 @@ function initData() {
 // Session Gate Management
 function applyStaffSession() {
   const gate = document.getElementById('login-gate-screen');
+  const header = document.getElementById('staff-header');
+  const container = document.getElementById('staff-container');
   const sessionBadge = document.getElementById('session-badge');
   const logoutBtn = document.getElementById('logout-btn');
   const sidebarRoleTitle = document.getElementById('sidebar-role-title');
@@ -84,10 +86,14 @@ function applyStaffSession() {
 
   if (currentUserRole !== 'staff') {
     gate.style.display = 'flex';
+    if (header) header.style.display = 'none';
+    if (container) container.style.display = 'none';
     if (sessionBadge) sessionBadge.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
   } else {
     gate.style.display = 'none';
+    if (header) header.style.display = 'flex';
+    if (container) container.style.display = 'flex';
     
     if (sessionBadge) {
       sessionBadge.style.display = 'inline-flex';

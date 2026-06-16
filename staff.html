@@ -242,22 +242,7 @@
   <script src="menu-data.js"></script>
   <script src="app-staff.js"></script>
   <script>
-    // Staff-page specific: show/hide shell on session state
-    const _origApplyStaff = applyStaffSession;
-    function applyStaffSession() {
-      _origApplyStaff();
-      const header = document.getElementById('staff-header');
-      const container = document.getElementById('staff-container');
-      if (currentUserRole === 'staff') {
-        if (header) header.style.display = 'flex';
-        if (container) container.style.display = 'flex';
-      } else {
-        if (header) header.style.display = 'none';
-        if (container) container.style.display = 'none';
-      }
-    }
-
-    // Auto-refresh kitchen and delivery every 8 seconds
+    // Auto-refresh kitchen and delivery every 5 seconds
     setInterval(() => {
       const saved = localStorage.getItem('aetheria_orders');
       if (saved) {

@@ -20,9 +20,13 @@ window.addEventListener('DOMContentLoaded', () => {
   updateCartUI();
   updateNavBadges();
   
-  // Set default values in DOM
-  document.getElementById('table-num-input').value = currentTableNum;
-  document.getElementById('cart-table-no').textContent = currentTableNum;
+  // Set default values in DOM (if they exist)
+  const tableInput = document.getElementById('table-num-input');
+  if (tableInput) tableInput.value = currentTableNum;
+  
+  const cartTableNo = document.getElementById('cart-table-no');
+  if (cartTableNo) cartTableNo.textContent = currentTableNum;
+  
   const gateInput = document.getElementById('gate-table-input');
   if (gateInput) gateInput.value = currentTableNum;
 
@@ -86,7 +90,7 @@ function applyGuestSession() {
     gate.style.display = 'none';
     if (sessionBadge) {
       sessionBadge.style.display = 'inline-flex';
-      sessionText.textContent = `Table ${currentTableNum}`;
+      if (sessionText) sessionText.textContent = `Table ${currentTableNum}`;
     }
     
     // Default to the kiosk screen
@@ -95,7 +99,9 @@ function applyGuestSession() {
 }
 
 function loginAsGuest() {
-  const tableVal = document.getElementById('gate-table-input').value.trim();
+  const gateInput = document.getElementById('gate-table-input');
+  if (!gateInput) return;
+  const tableVal = gateInput.value.trim();
   if (!tableVal) {
     showToast("Please enter a Table / Room number.", "danger");
     return;
@@ -107,8 +113,11 @@ function loginAsGuest() {
   localStorage.setItem('aetheria_role', 'guest');
   localStorage.setItem('aetheria_table', currentTableNum);
   
-  document.getElementById('table-num-input').value = currentTableNum;
-  document.getElementById('cart-table-no').textContent = currentTableNum;
+  const tableInput = document.getElementById('table-num-input');
+  if (tableInput) tableInput.value = currentTableNum;
+  
+  const cartTableNo = document.getElementById('cart-table-no');
+  if (cartTableNo) cartTableNo.textContent = currentTableNum;
   
   applyGuestSession();
   addLog(`Guest logged in at Table ${currentTableNum}.`);
@@ -126,7 +135,8 @@ function logout() {
 
 function updateTableNum(val) {
   currentTableNum = val.replace(/[^a-zA-Z0-9]/g, '').trim();
-  document.getElementById('cart-table-no').textContent = currentTableNum || '?';
+  const cartTableNo = document.getElementById('cart-table-no');
+  if (cartTableNo) cartTableNo.textContent = currentTableNum || '?';
   localStorage.setItem('aetheria_table', currentTableNum);
   
   const gateInput = document.getElementById('gate-table-input');
@@ -152,7 +162,7 @@ function addLog(text) {
 
 // Router
 function switchScreen(screenId) {
-  document.querySelectorAll('.screen-container').forEach(screen => {
+  document.querySelectorAll('.screen-container, .guest-screen').forEach(screen => {
     screen.classList.remove('active');
   });
   

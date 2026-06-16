@@ -458,9 +458,7 @@
   <script src="menu-data.js"></script>
   <script src="app-guest.js"></script>
   <script>
-    // Guest-page specific overrides
-
-    // Poll for order updates every 5 seconds (for real-time status in same-tab usage)
+    // Poll for order updates every 3 seconds (for real-time status in same-tab usage)
     setInterval(() => {
       const saved = localStorage.getItem('aetheria_orders');
       if (saved) {
@@ -487,73 +485,6 @@
       if (e.target === document.getElementById('cart-modal-overlay')) {
         closeCartModal();
       }
-    }
-
-    // Override applyGuestSession to also toggle topbar, main, tabbar
-    const _origApply = applyGuestSession;
-    function applyGuestSession() {
-      _origApply();
-      const topbar = document.getElementById('guest-topbar');
-      const main = document.getElementById('guest-main');
-      const tabbar = document.getElementById('guest-tabbar');
-
-      if (currentUserRole === 'guest') {
-        if (topbar) topbar.style.display = 'flex';
-        if (main) main.style.display = 'block';
-        if (tabbar) tabbar.style.display = 'flex';
-        document.getElementById('table-pill-num').textContent = currentTableNum;
-      } else {
-        if (topbar) topbar.style.display = 'none';
-        if (main) main.style.display = 'none';
-        if (tabbar) tabbar.style.display = 'none';
-      }
-    }
-
-    // Override switchScreen to use guest tab buttons
-    const _origSwitch = switchScreen;
-    function switchScreen(screenId) {
-      document.querySelectorAll('.guest-screen').forEach(s => s.classList.remove('active'));
-      const target = document.getElementById(screenId);
-      if (target) { target.classList.add('active'); currentScreen = screenId; }
-      document.querySelectorAll('.guest-tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-screen') === screenId);
-      });
-      if (screenId === 'guest-receiver-screen') renderGuestReceiver();
-      updateNavBadges();
-    }
-
-    // Override updateNavBadges to also update floating cart and dot badge
-    const _origBadges = updateNavBadges;
-    function updateNavBadges() {
-      _origBadges();
-      // Floating cart
-      const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
-      const floatingBtn = document.getElementById('floating-cart-btn');
-      const floatingCount = document.getElementById('floating-cart-count');
-      if (floatingBtn) {
-        floatingBtn.style.display = cartCount > 0 && currentUserRole === 'guest' ? 'flex' : 'none';
-        if (floatingCount) floatingCount.textContent = cartCount;
-      }
-      // Receiver badge dot
-      const receiverCount = orders.filter(o => o.table === currentTableNum &&
-        (o.status === 'out_for_delivery' || o.status === 'delivered' || o.status === 'confirmed')).length;
-      const dot = document.getElementById('receiver-badge');
-      if (dot) dot.style.display = receiverCount > 0 ? 'block' : 'none';
-    }
-
-    // After order placed, close cart modal
-    const _origPlaceOrder = placeOrder;
-    function placeOrder() {
-      closeCartModal();
-      _origPlaceOrder();
-    }
-
-    // On login, set table-pill
-    const _origLogin = loginAsGuest;
-    function loginAsGuest() {
-      _origLogin();
-      const pill = document.getElementById('table-pill-num');
-      if (pill) pill.textContent = currentTableNum;
     }
   </script>
 </body>
