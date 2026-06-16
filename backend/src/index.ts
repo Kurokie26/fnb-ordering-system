@@ -50,8 +50,11 @@ io.on('connection', (socket) => {
 // Make io accessible in routes
 app.set('io', io);
 
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
 
-export { app, io, prisma };
+export default app;
+export { app as expressApp, io, prisma };

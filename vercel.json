@@ -1,11 +1,8 @@
 {
   "version": 2,
-  "cleanUrls": true,
-  "trailingSlash": false,
-  "routes": [
-    { "src": "/guest", "dest": "/guest.html" },
-    { "src": "/staff", "dest": "/staff.html" },
-    { "src": "/", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/(.*)", "destination": "/frontend/dist/$1" }
   ],
   "headers": [
     {
