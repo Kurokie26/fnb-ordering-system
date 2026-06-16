@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aetheria Bistro — Guest Dining Portal</title>
+  <meta name="description" content="Browse our chef-curated menu, place your order, and track delivery status from your table.">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Guest-specific overrides */
+    body { overflow: auto; }
+
+    .guest-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Guest Top Nav */
+    .guest-topbar {
+      height: 64px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .guest-brand {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      background: linear-gradient(135deg, var(--color-primary), #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .guest-topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .guest-table-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+
+    /* Guest Bottom Tab Bar */
+    .guest-tabbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      z-index: 100;
+    }
+
+    .guest-tab-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-speed) ease;
+      position: relative;
+    }
+
+    .guest-tab-btn .tab-icon { font-size: 20px; }
+
+    .guest-tab-btn.active {
+      color: var(--color-primary);
+    }
+
+    .guest-tab-btn.active::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 25%;
+      right: 25%;
+      height: 2px;
+      background: var(--color-primary);
+      border-radius: 0 0 4px 4px;
+    }
+
+    .guest-tab-btn:hover { color: var(--text-primary); }
+
+    .tab-notification-dot {
+      position: absolute;
+      top: 8px;
+      right: calc(50% - 18px);
+      width: 8px;
+      height: 8px;
+      background: var(--color-danger);
+      border-radius: 50%;
+      display: none;
+    }
+
+    /* Main Content Area */
+    .guest-main {
+      flex: 1;
+      padding-bottom: 80px; /* tab bar height */
+    }
+
+    .guest-screen {
+      display: none;
+      padding: 20px 16px;
+      animation: fadeIn 0.25s ease forwards;
+    }
+
+    .guest-screen.active { display: block; }
+
+    /* Kiosk Header */
+    .kiosk-page-header {
+      margin-bottom: 16px;
+    }
+
+    .kiosk-page-header h2 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .kiosk-page-header p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* Floating Cart Button */
+    .floating-cart-btn {
+      position: fixed;
+      bottom: 76px;
+      right: 16px;
+      background: var(--color-primary);
+      color: #000;
+      border: none;
+      border-radius: 20px;
+      padding: 12px 20px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+      transition: all var(--transition-speed) ease;
+      z-index: 99;
+    }
+
+    .floating-cart-btn:hover {
+      transform: scale(1.04);
+      box-shadow: 0 6px 24px rgba(245, 158, 11, 0.45);
+    }
+
+    .floating-cart-badge {
+      background: #000;
+      color: var(--color-primary);
+      border-radius: 10px;
+      padding: 1px 8px;
+      font-size: 12px;
+    }
+
+    /* Cart Modal */
+    .cart-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .cart-modal-overlay.open { display: flex; }
+
+    .cart-modal {
+      background: var(--bg-secondary);
+      border-radius: 20px 20px 0 0;
+      border: 1px solid var(--border-color);
+      width: 100%;
+      max-width: 520px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .cart-modal-handle {
+      width: 36px;
+      height: 4px;
+      background: var(--border-color);
+      border-radius: 2px;
+      margin: 12px auto 0;
+    }
+
+    .cart-modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cart-modal-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .cart-modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+    }
+
+    .cart-modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Order Tracker styles */
+    .order-tracker-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .tracker-steps {
+      display: flex;
+      align-items: center;
+      margin: 20px 0;
+      position: relative;
+    }
+
+    .tracker-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      position: relative;
+    }
+
+    .tracker-step::before {
+      content: '';
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      right: -50%;
+      height: 2px;
+      background: var(--border-color);
+    }
+
+    .tracker-step:last-child::before { display: none; }
+
+    .tracker-step-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      z-index: 1;
+      transition: all 0.3s ease;
+    }
+
+    .tracker-step.done .tracker-step-dot {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+
+    .tracker-step.active .tracker-step-dot {
+      background: var(--color-info);
+      border-color: var(--color-info);
+      box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+      animation: pulse 1.5s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .tracker-step-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .tracker-step.done .tracker-step-label,
+    .tracker-step.active .tracker-step-label {
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="guest-shell">
+
+    <!-- Login Gate Overlay -->
+    <div id="login-gate-screen" class="login-gate">
+      <div class="login-box" style="max-width: 480px;">
+        <div class="login-header">
+          <span style="font-size: 52px; display: block; margin-bottom: 12px;">🍽️</span>
+          <h2>AETHERIA BISTRO</h2>
+          <p>Your personal dining & ordering portal</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+          <div class="form-group" style="display:flex; flex-direction:column; gap:8px;">
+            <label for="gate-table-input" style="font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Your Table / Room No.</label>
+            <input type="text" id="gate-table-input" class="form-control" 
+              style="text-align: center; font-size: 28px; font-weight: 700; color: var(--color-primary); padding: 16px; letter-spacing: 4px;" 
+              value="5" maxlength="4" placeholder="e.g. 5">
+          </div>
+
+          <button class="btn-form-submit" style="padding: 14px; font-size: 15px;" onclick="loginAsGuest()">
+            🚀 Open My Dining Session
+          </button>
+
+          <p style="text-align:center; font-size:12px; color: var(--text-muted);">
+            Need staff access? Visit the
+            <a href="staff.html" style="color:var(--color-info); text-decoration: none;">Staff Backoffice →</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Bar (shown after login) -->
+    <header class="guest-topbar" id="guest-topbar" style="display:none;">
+      <div class="guest-brand">
+        <span>🌌</span> AETHERIA
+      </div>
+      <div class="guest-topbar-right">
+        <div class="guest-table-pill" id="table-pill">
+          🪑 Table <span id="table-pill-num">5</span>
+        </div>
+        <button class="btn-reset" style="padding: 6px 12px; font-size: 12px;" onclick="logout()">
+          Exit 🚪
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Screens -->
+    <main class="guest-main" id="guest-main" style="display:none;">
+
+      <!-- 1. ORDER MENU SCREEN -->
+      <section id="guest-kiosk-screen" class="guest-screen active">
+        <div class="kiosk-page-header">
+          <h2>Order Menu</h2>
+          <p>Tap an item to add it to your order</p>
+        </div>
+
+        <div class="categories-bar" id="kiosk-categories-bar" style="margin-bottom: 16px;"></div>
+
+        <div class="menu-grid" id="kiosk-menu-grid"></div>
+      </section>
+
+      <!-- 2. ORDER STATUS SCREEN -->
+      <section id="guest-receiver-screen" class="guest-screen">
+        <div class="kiosk-page-header">
+          <h2>My Order</h2>
+          <p>Live status of your current order</p>
+        </div>
+        <div id="guest-receiver-content"></div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Tab Bar -->
+    <nav class="guest-tabbar" id="guest-tabbar" style="display:none;">
+      <button class="guest-tab-btn active" data-screen="guest-kiosk-screen" onclick="switchScreen('guest-kiosk-screen')">
+        <span class="tab-icon">🍽️</span>
+        Order Menu
+      </button>
+      <button class="guest-tab-btn" data-screen="guest-receiver-screen" onclick="switchScreen('guest-receiver-screen')">
+        <span class="tab-icon">📦</span>
+        My Order
+        <span class="tab-notification-dot" id="receiver-badge"></span>
+      </button>
+    </nav>
+
+    <!-- Floating Cart Button -->
+    <button class="floating-cart-btn" id="floating-cart-btn" style="display:none;" onclick="openCartModal()">
+      🛍️ View Cart
+      <span class="floating-cart-badge" id="floating-cart-count">0</span>
+    </button>
+
+  </div>
+
+  <!-- Cart Modal -->
+  <div class="cart-modal-overlay" id="cart-modal-overlay" onclick="closeCartOnOutsideClick(event)">
+    <div class="cart-modal" id="cart-modal">
+      <div class="cart-modal-handle"></div>
+      <div class="cart-modal-header">
+        <h3>🛍️ Your Selection</h3>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn-reset" style="padding:4px 10px; font-size:11px;" onclick="clearCart()">Clear</button>
+          <button class="btn-reset" style="padding:4px 10px; font-size:11px; color:var(--text-secondary); background:none; border-color:var(--border-color);" onclick="closeCartModal()">✕</button>
+        </div>
+      </div>
+      <div class="cart-modal-body" id="cart-items-container"></div>
+      <div class="cart-modal-footer">
+        <div class="summary-row">
+          <span>Subtotal</span><span id="cart-subtotal">$0.00</span>
+        </div>
+        <div class="summary-row">
+          <span>Tax (8%)</span><span id="cart-tax">$0.00</span>
+        </div>
+        <div class="summary-row total">
+          <span>Total</span><span id="cart-total">$0.00</span>
+        </div>
+        <button class="btn-checkout" id="btn-place-order" onclick="placeOrder()" style="margin-top: 12px;">
+          🚀 Place Order for Table <span id="cart-table-no">5</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="menu-data.js"></script>
+  <script src="app-guest.js"></script>
+  <script>
+    // Guest-page specific overrides
+
+    // Poll for order updates every 5 seconds (for real-time status in same-tab usage)
+    setInterval(() => {
+      const saved = localStorage.getItem('aetheria_orders');
+      if (saved) {
+        const updated = JSON.parse(saved);
+        if (JSON.stringify(updated) !== JSON.stringify(orders)) {
+          orders = updated;
+          updateNavBadges();
+          if (currentScreen === 'guest-receiver-screen') {
+            renderGuestReceiver();
+          }
+        }
+      }
+    }, 3000);
+
+    function openCartModal() {
+      document.getElementById('cart-modal-overlay').classList.add('open');
+    }
+
+    function closeCartModal() {
+      document.getElementById('cart-modal-overlay').classList.remove('open');
+    }
+
+    function closeCartOnOutsideClick(e) {
+      if (e.target === document.getElementById('cart-modal-overlay')) {
+        closeCartModal();
+      }
+    }
+
+    // Override applyGuestSession to also toggle topbar, main, tabbar
+    const _origApply = applyGuestSession;
+    function applyGuestSession() {
+      _origApply();
+      const topbar = document.getElementById('guest-topbar');
+      const main = document.getElementById('guest-main');
+      const tabbar = document.getElementById('guest-tabbar');
+
+      if (currentUserRole === 'guest') {
+        if (topbar) topbar.style.display = 'flex';
+        if (main) main.style.display = 'block';
+        if (tabbar) tabbar.style.display = 'flex';
+        document.getElementById('table-pill-num').textContent = currentTableNum;
+      } else {
+        if (topbar) topbar.style.display = 'none';
+        if (main) main.style.display = 'none';
+        if (tabbar) tabbar.style.display = 'none';
+      }
+    }
+
+    // Override switchScreen to use guest tab buttons
+    const _origSwitch = switchScreen;
+    function switchScreen(screenId) {
+      document.querySelectorAll('.guest-screen').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById(screenId);
+      if (target) { target.classList.add('active'); currentScreen = screenId; }
+      document.querySelectorAll('.guest-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-screen') === screenId);
+      });
+      if (screenId === 'guest-receiver-screen') renderGuestReceiver();
+      updateNavBadges();
+    }
+
+    // Override updateNavBadges to also update floating cart and dot badge
+    const _origBadges = updateNavBadges;
+    function updateNavBadges() {
+      _origBadges();
+      // Floating cart
+      const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
+      const floatingBtn = document.getElementById('floating-cart-btn');
+      const floatingCount = document.getElementById('floating-cart-count');
+      if (floatingBtn) {
+        floatingBtn.style.display = cartCount > 0 && currentUserRole === 'guest' ? 'flex' : 'none';
+        if (floatingCount) floatingCount.textContent = cartCount;
+      }
+      // Receiver badge dot
+      const receiverCount = orders.filter(o => o.table === currentTableNum &&
+        (o.status === 'out_for_delivery' || o.status === 'delivered' || o.status === 'confirmed')).length;
+      const dot = document.getElementById('receiver-badge');
+      if (dot) dot.style.display = receiverCount > 0 ? 'block' : 'none';
+    }
+
+    // After order placed, close cart modal
+    const _origPlaceOrder = placeOrder;
+    function placeOrder() {
+      closeCartModal();
+      _origPlaceOrder();
+    }
+
+    // On login, set table-pill
+    const _origLogin = loginAsGuest;
+    function loginAsGuest() {
+      _origLogin();
+      const pill = document.getElementById('table-pill-num');
+      if (pill) pill.textContent = currentTableNum;
+    }
+  </script>
+</body>
+</html>
