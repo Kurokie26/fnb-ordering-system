@@ -1,6 +1,9 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
 const DEFAULT_MENU = [
   {
-    id: "m1",
     name: "Aether Truffle Burger",
     price: 24.00,
     category: "Mains",
@@ -11,7 +14,6 @@ const DEFAULT_MENU = [
     prepTime: 18
   },
   {
-    id: "m2",
     name: "Glazed Salmon Poke Bowl",
     price: 18.50,
     category: "Mains",
@@ -22,7 +24,6 @@ const DEFAULT_MENU = [
     prepTime: 12
   },
   {
-    id: "m3",
     name: "Smoked Mushroom Risotto",
     price: 21.00,
     category: "Mains",
@@ -33,7 +34,6 @@ const DEFAULT_MENU = [
     prepTime: 20
   },
   {
-    id: "d1",
     name: "Hibiscus Rose Elixir",
     price: 8.00,
     category: "Drinks",
@@ -44,7 +44,6 @@ const DEFAULT_MENU = [
     prepTime: 5
   },
   {
-    id: "d2",
     name: "Ceremonial Matcha Latte",
     price: 7.50,
     category: "Drinks",
@@ -55,7 +54,6 @@ const DEFAULT_MENU = [
     prepTime: 5
   },
   {
-    id: "d3",
     name: "Classic Smoked Old Fashioned",
     price: 14.00,
     category: "Drinks",
@@ -66,7 +64,6 @@ const DEFAULT_MENU = [
     prepTime: 8
   },
   {
-    id: "de1",
     name: "Molten Lava Cake",
     price: 12.00,
     category: "Desserts",
@@ -77,7 +74,6 @@ const DEFAULT_MENU = [
     prepTime: 14
   },
   {
-    id: "de2",
     name: "Deconstructed Tiramisu",
     price: 11.00,
     category: "Desserts",
@@ -88,7 +84,6 @@ const DEFAULT_MENU = [
     prepTime: 10
   },
   {
-    id: "s1",
     name: "Parmesan Truffle Fries",
     price: 9.50,
     category: "Sides",
@@ -99,7 +94,6 @@ const DEFAULT_MENU = [
     prepTime: 10
   },
   {
-    id: "s2",
     name: "Crispy Calamari",
     price: 13.50,
     category: "Sides",
@@ -111,28 +105,38 @@ const DEFAULT_MENU = [
   }
 ];
 
-// Tag display config
-const TAG_CONFIG = {
-  'vegetarian':     { label: '🌿 Vegetarian', color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.25)' },
-  'vegan':          { label: '🍃 Vegan',       color: '#10b981', bg: 'rgba(16,185,129,0.07)', border: 'rgba(16,185,129,0.2)' },
-  'halal':          { label: '☪️ Halal',        color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' },
-  'gluten-free':    { label: '🌾 Gluten-Free',  color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.2)' },
-  'spicy':          { label: '🌶️ Spicy',        color: '#f43f5e', bg: 'rgba(244,63,94,0.08)',  border: 'rgba(244,63,94,0.2)' },
-  'contains-alcohol': { label: '🍺 Alcohol',  color: '#0ea5e9', bg: 'rgba(14,165,233,0.08)',  border: 'rgba(14,165,233,0.2)' },
-  'contains-dairy': { label: '🥛 Dairy',       color: '#94a3b8', bg: 'rgba(148,163,184,0.08)', border: 'rgba(148,163,184,0.2)' },
-  'contains-seafood': { label: '🦐 Seafood',   color: '#06b6d4', bg: 'rgba(6,182,212,0.08)',   border: 'rgba(6,182,212,0.2)' },
-  'contains-nuts':  { label: '🥜 Nuts',         color: '#d97706', bg: 'rgba(217,119,6,0.08)',   border: 'rgba(217,119,6,0.2)' },
-};
+async function main() {
+  console.log('Seeding menu data...');
 
-function renderTagBadges(tags = []) {
-  if (!tags.length) return '';
-  return tags.map(t => {
-    const cfg = TAG_CONFIG[t];
-    if (!cfg) return '';
-    return `<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.border};margin-right:4px;margin-top:4px;">${cfg.label}</span>`;
-  }).join('');
+  for (const item of DEFAULT_MENU) {
+    const category = await prisma.category.upsert({
+      where: { name: item.category },
+      update: {},
+      create: { name: item.category },
+    });
+
+    await prisma.menuItem.create({
+      data: {
+        name: item.name,
+        price: item.price,
+        description: item.description,
+        image: item.image,
+        available: item.available,
+        tags: item.tags,
+        prepTime: item.prepTime,
+        categoryId: category.id,
+      },
+    });
+  }
+
+  console.log('Seeding completed.');
 }
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = DEFAULT_MENU;
-}
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

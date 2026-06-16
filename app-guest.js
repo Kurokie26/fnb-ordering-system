@@ -2,11 +2,18 @@
 let menu = [];
 let orders = [];
 let cart = {}; // { itemId: quantity }
+let cartNotes = {}; // { itemId: note }
 let currentScreen = 'guest-kiosk-screen';
 let currentCategory = 'All';
 let currentTableNum = '5';
 let logs = []; // Shared logs for tracking
 let currentUserRole = null;
+
+// Search & Dietary State
+let searchQuery = '';
+let selectedDietary = 'all';
+let selectedItemIdForModal = null;
+let tempRatingValue = null;
 
 // Initialize App
 window.addEventListener('DOMContentLoaded', () => {
@@ -41,6 +48,9 @@ window.addEventListener('storage', (e) => {
     updateNavBadges();
     if (currentScreen === 'guest-receiver-screen') {
       renderGuestReceiver();
+    }
+    if (currentScreen === 'guest-history-screen') {
+      renderOrderHistory();
     }
   }
   if (e.key === 'aetheria_menu') {
@@ -193,6 +203,8 @@ function switchScreen(screenId) {
 
   if (screenId === 'guest-receiver-screen') {
     renderGuestReceiver();
+  } else if (screenId === 'guest-history-screen') {
+    renderOrderHistory();
   }
   
   updateNavBadges();
@@ -231,20 +243,53 @@ function renderCategories() {
   `).join('');
 }
 
-function selectCategory(cat) {
-  currentCategory = cat;
-  renderCategories();
+function selectDietaryFilter(tag) {
+  selectedDietary = tag;
+  
+  // Toggle active class on filter buttons
+  document.querySelectorAll('.dietary-filter-btn').forEach(btn => {
+    if (btn.getAttribute('data-tag') === tag) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  
   renderKioskMenu();
+}
+
+function filterMenuSearch() {
+  const searchInput = document.getElementById('menu-search');
+  if (searchInput) {
+    searchQuery = searchInput.value;
+    renderKioskMenu();
+  }
 }
 
 function renderKioskMenu() {
   const grid = document.getElementById('kiosk-menu-grid');
   if (!grid) return;
   
-  const filtered = currentCategory === 'All' 
+  let filtered = currentCategory === 'All' 
     ? menu 
     : menu.filter(item => item.category === currentCategory);
     
+  // Filter by search query
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase().trim();
+    filtered = filtered.filter(item => 
+      item.name.toLowerCase().includes(q) || 
+      item.description.toLowerCase().includes(q)
+    );
+  }
+  
+  // Filter by dietary tag
+  if (selectedDietary !== 'all') {
+    filtered = filtered.filter(item => 
+      item.tags && item.tags.includes(selectedDietary)
+    );
+  }
+  
   if (filtered.length === 0) {
     grid.innerHTML = `<div style="grid-column: 1/-1; padding: 40px; text-align: center; color: var(--text-secondary);">No menu items found.</div>`;
     return;
@@ -259,7 +304,7 @@ function renderKioskMenu() {
       actionHTML = `<span style="color: var(--color-danger); font-size:13px; font-weight:600;">Out of Stock</span>`;
     } else if (qtyInCart > 0) {
       actionHTML = `
-        <div class="qty-controller">
+        <div class="qty-controller" onclick="event.stopPropagation()">
           <button class="qty-btn" onclick="adjustQty('${item.id}', -1)">-</button>
           <span class="qty-val">${qtyInCart}</span>
           <button class="qty-btn" onclick="adjustQty('${item.id}', 1)">+</button>
@@ -267,14 +312,16 @@ function renderKioskMenu() {
       `;
     } else {
       actionHTML = `
-        <button class="btn-add-cart" onclick="addToCart('${item.id}')">
-          ➕ Add to Order
+        <button class="btn-add-cart" onclick="event.stopPropagation(); openItemModal('${item.id}')">
+          ➕ Add
         </button>
       `;
     }
     
+    const tagsHTML = typeof renderTagBadges === 'function' ? renderTagBadges(item.tags) : '';
+    
     return `
-      <div class="menu-card" style="${isOut ? 'opacity: 0.65; pointer-events: none;' : ''}">
+      <div class="menu-card" onclick="openItemModal('${item.id}')" style="${isOut ? 'opacity: 0.65; pointer-events: none;' : 'cursor:pointer;'}">
         <div class="menu-card-img-placeholder">
           ${item.image}
           <div class="menu-card-badge">${item.category}</div>
@@ -283,6 +330,7 @@ function renderKioskMenu() {
           <div>
             <div class="menu-card-title">${item.name}</div>
             <div class="menu-card-desc">${item.description}</div>
+            <div style="margin-top: 4px; display: flex; flex-wrap: wrap;">${tagsHTML}</div>
           </div>
           <div class="menu-card-footer">
             <div class="menu-card-price">$${item.price.toFixed(2)}</div>
@@ -292,6 +340,105 @@ function renderKioskMenu() {
       </div>
     `;
   }).join('');
+}
+
+// Item Detail Modal Actions
+function openItemModal(itemId) {
+  const item = menu.find(i => i.id === itemId);
+  if (!item || !item.available) return;
+  
+  selectedItemIdForModal = itemId;
+  const overlay = document.getElementById('item-modal-overlay');
+  const modal = document.getElementById('item-modal');
+  if (!overlay || !modal) return;
+  
+  const currentQty = cart[itemId] || 1;
+  const currentNote = cartNotes[itemId] || '';
+  const tagsHTML = typeof renderTagBadges === 'function' ? renderTagBadges(item.tags) : '';
+  
+  modal.innerHTML = `
+    <div class="item-modal-hero">
+      ${item.image}
+      <button class="item-modal-close-btn" onclick="closeItemModal()">✕</button>
+    </div>
+    <div class="item-modal-body">
+      <div class="item-modal-name">${item.name}</div>
+      <div class="item-modal-price">$${item.price.toFixed(2)}</div>
+      <div class="item-modal-desc">${item.description}</div>
+      
+      <div style="margin-bottom:12px; display:flex; flex-wrap:wrap;">
+        ${tagsHTML}
+      </div>
+      
+      <div class="item-modal-section-label">⏱️ Estimated Prep Time</div>
+      <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
+        ~${item.prepTime || 10} minutes
+      </div>
+
+      <div class="item-modal-section-label">✍️ Special Instructions / Notes</div>
+      <textarea class="special-instructions-input" id="modal-item-note" placeholder="E.g., No onions, extra spicy, sauce on the side..." rows="3">${currentNote}</textarea>
+    </div>
+    <div class="item-modal-footer">
+      <div class="modal-qty-controller">
+        <button class="modal-qty-btn" onclick="adjustModalQty(-1)">-</button>
+        <span class="modal-qty-val" id="modal-qty-val">${currentQty}</span>
+        <button class="modal-qty-btn" onclick="adjustModalQty(1)">+</button>
+      </div>
+      <button class="btn-add-to-order" onclick="submitModalToCart()">
+        ➕ Add to Order
+      </button>
+    </div>
+  `;
+  
+  overlay.classList.add('open');
+}
+
+function closeItemModal() {
+  const overlay = document.getElementById('item-modal-overlay');
+  if (overlay) overlay.classList.remove('open');
+  selectedItemIdForModal = null;
+}
+
+function closeItemModalOnOutsideClick(e) {
+  if (e.target === document.getElementById('item-modal-overlay')) {
+    closeItemModal();
+  }
+}
+
+function adjustModalQty(amount) {
+  const qtyValEl = document.getElementById('modal-qty-val');
+  if (!qtyValEl) return;
+  let currentQty = parseInt(qtyValEl.textContent) || 1;
+  currentQty += amount;
+  if (currentQty < 1) currentQty = 1;
+  qtyValEl.textContent = currentQty;
+}
+
+function submitModalToCart() {
+  if (!selectedItemIdForModal) return;
+  const itemId = selectedItemIdForModal;
+  const item = menu.find(i => i.id === itemId);
+  if (!item) return;
+  
+  const qtyValEl = document.getElementById('modal-qty-val');
+  const qty = qtyValEl ? (parseInt(qtyValEl.textContent) || 1) : 1;
+  
+  const noteEl = document.getElementById('modal-item-note');
+  const note = noteEl ? noteEl.value.trim() : '';
+  
+  cart[itemId] = qty;
+  if (note) {
+    cartNotes[itemId] = note;
+  } else {
+    delete cartNotes[itemId];
+  }
+  
+  addLog(`Added ${qty}x ${item.name} to Table ${currentTableNum} order selection.`);
+  showToast(`${qty}x ${item.name} added to cart`, "success");
+  
+  closeItemModal();
+  updateCartUI();
+  renderKioskMenu();
 }
 
 function addToCart(itemId) {
@@ -314,6 +461,7 @@ function adjustQty(itemId, amount) {
     const item = menu.find(i => i.id === itemId);
     if (item) addLog(`Removed ${item.name} from Table ${currentTableNum} selection.`);
     delete cart[itemId];
+    delete cartNotes[itemId];
   }
   updateCartUI();
   renderKioskMenu();
@@ -321,6 +469,7 @@ function adjustQty(itemId, amount) {
 
 function clearCart() {
   cart = {};
+  cartNotes = {};
   updateCartUI();
   renderKioskMenu();
   showToast("Cart cleared", "info");
@@ -356,12 +505,14 @@ function updateCartUI() {
     const qty = cart[id];
     const cost = item.price * qty;
     subtotal += cost;
+    const note = cartNotes[id];
     
     itemsHTML += `
       <div class="cart-item">
-        <div class="cart-item-details">
-          <div class="cart-item-name">${item.name}</div>
-          <div class="cart-item-price">$${item.price.toFixed(2)} x ${qty}</div>
+        <div class="cart-item-details" onclick="openItemModal('${id}')" style="cursor:pointer; flex: 1; margin-right: 8px;">
+          <div class="cart-item-name" style="font-weight: 600;">${item.name}</div>
+          <div class="cart-item-price" style="font-size: 13px; color: var(--text-secondary);">$${item.price.toFixed(2)} x ${qty}</div>
+          ${note ? `<div class="cart-item-note">✍️ Note: ${note}</div>` : ''}
         </div>
         <div class="qty-controller">
           <button class="qty-btn" onclick="adjustQty('${id}', -1)">-</button>
@@ -397,6 +548,7 @@ function placeOrder() {
   
   const orderItems = [];
   let subtotal = 0;
+  let maxPrepTime = 0;
   
   itemIds.forEach(id => {
     const item = menu.find(i => i.id === id);
@@ -406,15 +558,24 @@ function placeOrder() {
         id: item.id,
         name: item.name,
         price: item.price,
-        quantity: qty
+        quantity: qty,
+        note: cartNotes[item.id] || ""
       });
       subtotal += item.price * qty;
+      
+      if (item.prepTime && item.prepTime > maxPrepTime) {
+        maxPrepTime = item.prepTime;
+      }
     }
   });
   
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
   const orderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+  
+  if (maxPrepTime === 0) maxPrepTime = 15; // default prep time fallback
+  const etaMinutes = maxPrepTime + 5;
+  const etaTimestamp = new Date(new Date().getTime() + etaMinutes * 60000).toISOString();
   
   const newOrder = {
     id: orderId,
@@ -426,7 +587,11 @@ function placeOrder() {
     paymentMethod: null,
     createdAt: new Date().toISOString(),
     checklistChecked: false,
-    deliveryIssueNotes: ""
+    deliveryIssueNotes: "",
+    etaMinutes: etaMinutes,
+    etaTimestamp: etaTimestamp,
+    rating: null,
+    ratingComment: ""
   };
   
   orders.push(newOrder);
@@ -434,6 +599,7 @@ function placeOrder() {
   
   // Clear cart & switch tabs to Receiver
   cart = {};
+  cartNotes = {};
   updateCartUI();
   renderKioskMenu();
   updateNavBadges();
@@ -485,15 +651,32 @@ function renderGuestReceiver() {
   
   const order = activeOrdersForTable[activeOrdersForTable.length - 1];
   
+  // Calculate remaining ETA
+  let etaHTML = '';
+  if (order.etaTimestamp && (order.status === 'pending' || order.status === 'preparing' || order.status === 'ready_to_deliver' || order.status === 'out_for_delivery')) {
+    const remainingMs = new Date(order.etaTimestamp) - new Date();
+    const remainingMins = Math.max(1, Math.ceil(remainingMs / 60000));
+    etaHTML = `
+      <div class="eta-banner">
+        <span class="eta-banner-icon">⏱️</span>
+        <div style="text-align: left;">
+          <div class="eta-banner-text">Estimated Arrival: ~${remainingMins} mins</div>
+          <div class="eta-banner-sub">Calculated live based on kitchen preparation times</div>
+        </div>
+      </div>
+    `;
+  }
+  
   if (order.status === 'pending') {
     container.innerHTML = `
       <div class="receiver-center-card" style="border-color: var(--text-muted);">
         <div class="receiver-status-icon">📥</div>
         <div class="receiver-title">Order Submitted</div>
-        <div class="receiver-desc">
+        <div class="receiver-desc" style="margin-bottom: 14px;">
           Order <strong>${order.id}</strong> has been received by the backoffice.<br>
           Chefs will accept and begin preparation shortly.
         </div>
+        ${etaHTML}
       </div>
     `;
   } else if (order.status === 'preparing') {
@@ -501,10 +684,11 @@ function renderGuestReceiver() {
       <div class="receiver-center-card" style="border-color: var(--color-info);">
         <div class="receiver-status-icon">👨‍🍳</div>
         <div class="receiver-title">Chefs Cooking...</div>
-        <div class="receiver-desc">
+        <div class="receiver-desc" style="margin-bottom: 14px;">
           Your order <strong>${order.id}</strong> is being prepared by our kitchen team.<br>
           We prepare everything fresh. Hang tight!
         </div>
+        ${etaHTML}
       </div>
     `;
   } else if (order.status === 'ready_to_deliver') {
@@ -512,10 +696,11 @@ function renderGuestReceiver() {
       <div class="receiver-center-card" style="border-color: var(--color-primary);">
         <div class="receiver-status-icon">📦</div>
         <div class="receiver-title">Order Packaged & Ready</div>
-        <div class="receiver-desc">
+        <div class="receiver-desc" style="margin-bottom: 14px;">
           Chefs finished Order <strong>${order.id}</strong>.<br>
           Waitstaff is executing final temp and packaging checks before delivery.
         </div>
+        ${etaHTML}
       </div>
     `;
   } else if (order.status === 'out_for_delivery') {
@@ -523,12 +708,13 @@ function renderGuestReceiver() {
       <div class="receiver-center-card" style="border-color: var(--color-info);">
         <div class="receiver-status-icon">🛵</div>
         <div class="receiver-title">Food is on the way!</div>
-        <div class="receiver-desc">
+        <div class="receiver-desc" style="margin-bottom: 14px;">
           Order <strong>${order.id}</strong> is in-transit to <strong>Table ${order.table}</strong>.
         </div>
-        <div style="font-size: 12px; color: var(--text-muted); background: rgba(0,0,0,0.15); padding: 10px; border-radius:6px; margin-top:12px;">
+        <div style="font-size: 12px; color: var(--text-muted); background: rgba(0,0,0,0.15); padding: 10px; border-radius:6px; margin-bottom:12px; text-align: left;">
           Staff checklist verified: Insulation OK | Tableware packed
         </div>
+        ${etaHTML}
       </div>
     `;
   } else if (order.status === 'delivered') {
@@ -573,6 +759,35 @@ function renderGuestReceiver() {
       </div>
     `;
   } else if (order.status === 'confirmed') {
+    // If the order has not been rated yet, show rating flow first
+    if (order.rating === null) {
+      container.innerHTML = `
+        <div class="receiver-center-card" style="border-color: var(--color-primary); text-align: center;">
+          <div class="receiver-status-icon">⭐</div>
+          <div class="receiver-title">Rate Your Experience</div>
+          <div class="receiver-desc">
+            How was your dining experience for Order <strong>${order.id}</strong>?
+          </div>
+          
+          <div class="star-rating-wrap">
+            <button class="star-btn" onclick="setStarRating(1)">★</button>
+            <button class="star-btn" onclick="setStarRating(2)">★</button>
+            <button class="star-btn" onclick="setStarRating(3)">★</button>
+            <button class="star-btn" onclick="setStarRating(4)">★</button>
+            <button class="star-btn" onclick="setStarRating(5)">★</button>
+          </div>
+          <div class="rating-label" id="rating-label-text">Tap stars to rate</div>
+          
+          <textarea id="rating-comment" class="special-instructions-input" style="margin-top:12px; margin-bottom:12px;" placeholder="Add optional comments or feedback..."></textarea>
+          
+          <button class="btn-receiver yes" style="width:100%;" onclick="submitOrderRating('${order.id}')">
+            Submit & Proceed to Settlement
+          </button>
+        </div>
+      `;
+      return;
+    }
+
     container.innerHTML = `
       <div class="receiver-center-card" style="border-color: var(--color-success);">
         <div class="receiver-status-icon">💳</div>
@@ -626,11 +841,13 @@ function submitOrderIssue(orderId) {
 
 function confirmOrderDelivery(orderId, isOk) {
   const order = orders.find(o => o.id === orderId);
-  if (order && isOk) {
+  if (!order) return;
+  if (isOk) {
     order.status = 'confirmed';
+    order.deliveryConfirmedAt = new Date().toISOString();
     localStorage.setItem('aetheria_orders', JSON.stringify(orders));
     addLog(`Guest at Table ${currentTableNum} confirmed correct delivery of Order ${orderId}.`);
-    showToast("Order confirmed successfully.", "success");
+    showToast("Order confirmed! Please rate and choose payment.", "success");
     renderGuestReceiver();
     updateNavBadges();
   }
@@ -675,6 +892,12 @@ function selectPaymentMethod(orderId, method) {
 }
 
 function processCardPayment(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  // FR-11 guard: delivery must be confirmed first
+  if (!order || order.status !== 'confirmed') {
+    showToast("Delivery must be confirmed before payment.", "danger");
+    return;
+  }
   const ccNum = document.getElementById('cc-num').value.trim();
   const btn = document.getElementById('pay-process-btn');
   if (!ccNum) {
@@ -686,34 +909,50 @@ function processCardPayment(orderId) {
   btn.textContent = "Processing Card...";
   
   setTimeout(() => {
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-      order.status = 'completed';
-      order.paymentStatus = 'paid';
-      order.paymentMethod = 'immediate';
-      localStorage.setItem('aetheria_orders', JSON.stringify(orders));
-      
-      addLog(`Payment of $${order.total.toFixed(2)} for Order ${orderId} processed successfully via Credit Card.`);
-      showToast("Payment Successful!", "success");
-      renderReceipt(order);
-      updateNavBadges();
-    }
+    order.status = 'completed';
+    order.paymentStatus = 'paid';
+    order.paymentMethod = 'immediate';
+    order.closedAt = new Date().toISOString();
+    localStorage.setItem('aetheria_orders', JSON.stringify(orders));
+    
+    addLog(`Payment of $${order.total.toFixed(2)} for Order ${orderId} processed via Credit Card. Order CLOSED.`);
+    showToast("Payment Successful! Order closed.", "success");
+    renderReceipt(order);
+    updateNavBadges();
   }, 1200);
 }
 
 function confirmCheckoutBilling(orderId) {
   const order = orders.find(o => o.id === orderId);
-  if (order) {
-    order.status = 'completed';
-    order.paymentStatus = 'unpaid';
-    order.paymentMethod = 'checkout';
-    localStorage.setItem('aetheria_orders', JSON.stringify(orders));
-    
-    addLog(`Order ${orderId} ($${order.total.toFixed(2)}) charged to Table ${order.table} bill.`);
-    showToast("Charged to Room successfully.", "success");
-    renderReceipt(order);
-    updateNavBadges();
+  // FR-11 guard: delivery must be confirmed first
+  if (!order || order.status !== 'confirmed') {
+    showToast("Delivery must be confirmed before charging room.", "danger");
+    return;
   }
+  
+  order.status = 'completed';
+  order.paymentStatus = 'unpaid';
+  order.paymentMethod = 'checkout';
+  order.closedAt = new Date().toISOString();
+  localStorage.setItem('aetheria_orders', JSON.stringify(orders));
+  
+  // FR-10: Post to mock PMS folio ledger
+  const folio = JSON.parse(localStorage.getItem('aetheria_folio') || '[]');
+  folio.push({
+    id: 'FLO-' + Date.now(),
+    orderId: order.id,
+    table: order.table,
+    amount: order.total,
+    postedAt: new Date().toISOString(),
+    status: 'unpaid',
+    items: order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')
+  });
+  localStorage.setItem('aetheria_folio', JSON.stringify(folio));
+  
+  addLog(`Order ${orderId} ($${order.total.toFixed(2)}) charged to Table ${order.table} room bill. Posted to Folio. Order CLOSED.`);
+  showToast("Charged to Room Bill. Posted to Folio.", "success");
+  renderReceipt(order);
+  updateNavBadges();
 }
 
 function renderReceipt(order) {
@@ -781,7 +1020,7 @@ function showToast(message, type = 'info') {
   if (type === 'danger') icon = '🚨';
   
   toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
-  container.appendChild(toast);
+  if (container) container.appendChild(toast);
   
   setTimeout(() => {
     toast.classList.add('fade-out');
@@ -789,4 +1028,124 @@ function showToast(message, type = 'info') {
       toast.remove();
     }, 300);
   }, 3200);
+}
+
+// Star Rating helper functions
+function setStarRating(rating) {
+  tempRatingValue = rating;
+  const stars = document.querySelectorAll('.star-btn');
+  const label = document.getElementById('rating-label-text');
+  
+  stars.forEach((star, idx) => {
+    if (idx < rating) {
+      star.classList.add('lit');
+    } else {
+      star.classList.remove('lit');
+    }
+  });
+  
+  const labels = ["Poor 😞", "Fair 😐", "Good 🙂", "Very Good 😊", "Excellent! 😍"];
+  if (label) label.textContent = labels[rating - 1];
+}
+
+function submitOrderRating(orderId) {
+  if (tempRatingValue === null) {
+    showToast("Please select a star rating.", "danger");
+    return;
+  }
+  
+  const order = orders.find(o => o.id === orderId);
+  if (order) {
+    order.rating = tempRatingValue;
+    const commentEl = document.getElementById('rating-comment');
+    order.ratingComment = commentEl ? commentEl.value.trim() : '';
+    localStorage.setItem('aetheria_orders', JSON.stringify(orders));
+    
+    addLog(`Guest rated Order ${orderId} (${tempRatingValue} stars). Comments: "${order.ratingComment}".`);
+    
+    // Section 7.6: Auto-flag ratings ≤2 stars to supervisor
+    if (tempRatingValue <= 2) {
+      const flags = JSON.parse(localStorage.getItem('aetheria_flagged_feedback') || '[]');
+      flags.push({
+        orderId: order.id,
+        table: order.table,
+        rating: tempRatingValue,
+        comment: order.ratingComment,
+        flaggedAt: new Date().toISOString()
+      });
+      localStorage.setItem('aetheria_flagged_feedback', JSON.stringify(flags));
+      addLog(`⚠️ LOW RATING ALERT: Order ${orderId} received ${tempRatingValue} stars — flagged for F&B supervisor review.`);
+    }
+    
+    showToast("Thank you for your feedback!", "success");
+    tempRatingValue = null;
+    renderGuestReceiver();
+  }
+}
+
+// Order History
+function renderOrderHistory() {
+  const container = document.getElementById('guest-history-content');
+  const tablePill = document.getElementById('history-table-pill-num');
+  if (!container) return;
+  if (tablePill) tablePill.textContent = currentTableNum;
+  
+  // Filter for completed/closed orders for the current table
+  const pastOrders = orders.filter(o => o.table === currentTableNum && o.status === 'completed');
+  
+  if (pastOrders.length === 0) {
+    container.innerHTML = `
+      <div class="history-empty-state">
+        <div class="history-empty-icon">🧾</div>
+        <p>No previous orders found for Table ${currentTableNum}.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = pastOrders.map(order => {
+    const formattedDate = new Date(order.createdAt).toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    
+    const itemsText = order.items.map(item => `${item.quantity}x ${item.name}`).join(', ');
+    
+    return `
+      <div class="history-card">
+        <div class="history-card-header">
+          <div>
+            <span class="history-order-ref">${order.id}</span>
+            <div class="history-order-date">${formattedDate}</div>
+          </div>
+          <span class="history-order-total">$${order.total.toFixed(2)}</span>
+        </div>
+        <div class="history-order-items">
+          ${itemsText}
+        </div>
+        <button class="history-reorder-btn" onclick="reorderItems('${order.id}')">
+          🔄 Re-order these items
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function reorderItems(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return;
+  
+  order.items.forEach(item => {
+    cart[item.id] = (cart[item.id] || 0) + item.quantity;
+  });
+  
+  addLog(`Re-ordered items from Order ${orderId} into cart.`);
+  showToast("Items added back to cart!", "success");
+  
+  updateCartUI();
+  renderKioskMenu();
+  switchScreen('guest-kiosk-screen');
+  openCartModal();
 }

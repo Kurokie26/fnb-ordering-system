@@ -385,6 +385,21 @@
           <p>Tap an item to add it to your order</p>
         </div>
 
+        <!-- Search Bar -->
+        <div class="menu-search-bar">
+          <span class="menu-search-icon">🔍</span>
+          <input type="text" class="menu-search-input" id="menu-search" placeholder="Search menu items..." oninput="filterMenuSearch()">
+        </div>
+
+        <!-- Dietary Filters -->
+        <div class="dietary-filter-bar" id="dietary-filter-bar">
+          <button class="dietary-filter-btn active" data-tag="all" onclick="selectDietaryFilter('all')">All</button>
+          <button class="dietary-filter-btn" data-tag="vegetarian" onclick="selectDietaryFilter('vegetarian')">🌿 Vegetarian</button>
+          <button class="dietary-filter-btn" data-tag="vegan" onclick="selectDietaryFilter('vegan')">🍃 Vegan</button>
+          <button class="dietary-filter-btn" data-tag="halal" onclick="selectDietaryFilter('halal')">☪️ Halal</button>
+          <button class="dietary-filter-btn" data-tag="gluten-free" onclick="selectDietaryFilter('gluten-free')">🌾 Gluten-Free</button>
+        </div>
+
         <div class="categories-bar" id="kiosk-categories-bar" style="margin-bottom: 16px;"></div>
 
         <div class="menu-grid" id="kiosk-menu-grid"></div>
@@ -399,6 +414,15 @@
         <div id="guest-receiver-content"></div>
       </section>
 
+      <!-- 3. ORDER HISTORY SCREEN -->
+      <section id="guest-history-screen" class="guest-screen">
+        <div class="kiosk-page-header">
+          <h2>Order History</h2>
+          <p>Your previous orders for Table <span id="history-table-pill-num">?</span></p>
+        </div>
+        <div id="guest-history-content"></div>
+      </section>
+
     </main>
 
     <!-- Bottom Tab Bar -->
@@ -411,6 +435,10 @@
         <span class="tab-icon">📦</span>
         My Order
         <span class="tab-notification-dot" id="receiver-badge"></span>
+      </button>
+      <button class="guest-tab-btn" data-screen="guest-history-screen" onclick="switchScreen('guest-history-screen')">
+        <span class="tab-icon">🧾</span>
+        History
       </button>
     </nav>
 
@@ -448,6 +476,13 @@
           🚀 Place Order for Table <span id="cart-table-no">5</span>
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Item Detail Modal Overlay -->
+  <div class="item-modal-overlay" id="item-modal-overlay" onclick="closeItemModalOnOutsideClick(event)">
+    <div class="item-modal" id="item-modal">
+      <!-- Content populated dynamically -->
     </div>
   </div>
 

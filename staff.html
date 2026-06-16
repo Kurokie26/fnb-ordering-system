@@ -126,6 +126,15 @@
         </div>
 
         <div class="kitchen-kanban">
+          <!-- Column 0: Disputed Orders / Issues -->
+          <div class="kitchen-col" style="border-color: rgba(244, 63, 94, 0.4); box-shadow: 0 0 10px rgba(244, 63, 94, 0.05);">
+            <div class="kitchen-col-header" style="border-bottom-color: rgba(244, 63, 94, 0.2);">
+              <h3 style="color: var(--color-danger); display: flex; align-items: center; gap: 6px;">⚠️ Disputed / Issues</h3>
+              <span class="col-badge danger" id="kitchen-disputed-count" style="background: var(--color-danger); color: white;">0</span>
+            </div>
+            <div id="kitchen-disputed-container" style="display:flex; flex-direction:column; gap:16px;"></div>
+          </div>
+
           <div class="kitchen-col">
             <div class="kitchen-col-header">
               <h3>📥 Pending Orders</h3>
@@ -178,6 +187,7 @@
 
         <div class="admin-tabs">
           <button class="admin-tab-btn active" id="btn-tab-menu" onclick="switchAdminTab('menu')">Menu Management</button>
+          <button class="admin-tab-btn" id="btn-tab-categories" onclick="switchAdminTab('categories')">Category Management</button>
           <button class="admin-tab-btn" id="btn-tab-sales" onclick="switchAdminTab('sales')">Sales &amp; Financials</button>
         </div>
 
@@ -201,18 +211,53 @@
                 </div>
 
                 <div class="form-group" style="margin-top: 10px;">
+                  <label for="item-preptime">Prep Time (minutes)</label>
+                  <input type="number" id="item-preptime" class="form-control" min="1" max="120" placeholder="e.g. 15" required value="10">
+                </div>
+
+                <div class="form-group" style="margin-top: 10px;">
                   <label for="item-category">Category</label>
                   <select id="item-category" class="form-control" required>
-                    <option value="Mains">Mains</option>
-                    <option value="Drinks">Drinks</option>
-                    <option value="Desserts">Desserts</option>
-                    <option value="Sides">Sides</option>
+                    <!-- Dynamically populated -->
                   </select>
                 </div>
 
                 <div class="form-group" style="margin-top: 10px;">
                   <label for="item-image">Emoji / Icon</label>
                   <input type="text" id="item-image" class="form-control" placeholder="e.g. 🍞 or 🍹" required>
+                </div>
+
+                <div class="form-group" style="margin-top: 10px;">
+                  <label>Dietary Tags</label>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; font-size: 13px;">
+                    <label style="display:flex; align-items:center; gap:4px; font-weight:normal;">
+                      <input type="checkbox" name="dietary-tag" value="vegetarian"> 🌿 Veg
+                    </label>
+                    <label style="display:flex; align-items:center; gap:4px; font-weight:normal;">
+                      <input type="checkbox" name="dietary-tag" value="vegan"> 🍃 Vegan
+                    </label>
+                    <label style="display:flex; align-items:center; gap:4px; font-weight:normal;">
+                      <input type="checkbox" name="dietary-tag" value="halal"> ☪️ Halal
+                    </label>
+                    <label style="display:flex; align-items:center; gap:4px; font-weight:normal;">
+                      <input type="checkbox" name="dietary-tag" value="gluten-free"> 🌾 GF
+                    </label>
+                    <label style="display:flex; align-items:center; gap:4px; font-weight:normal;">
+                      <input type="checkbox" name="dietary-tag" value="spicy"> 🌶️ Spicy
+                    </label>
+                    <label style="display:flex; align-items:center; gap:4px; font-weight:normal;">
+                      <input type="checkbox" name="dietary-tag" value="alcohol"> 🍷 Alcohol
+                    </label>
+                    <label style="display:flex; align-items:center; gap:4px; font-weight:normal;">
+                      <input type="checkbox" name="dietary-tag" value="dairy"> 🧀 Dairy
+                    </label>
+                    <label style="display:flex; align-items:center; gap:4px; font-weight:normal;">
+                      <input type="checkbox" name="dietary-tag" value="seafood"> 🍤 Seafood
+                    </label>
+                    <label style="display:flex; align-items:center; gap:4px; font-weight:normal;">
+                      <input type="checkbox" name="dietary-tag" value="nuts"> 🥜 Nuts
+                    </label>
+                  </div>
                 </div>
 
                 <div class="form-group" style="margin-top: 10px;">

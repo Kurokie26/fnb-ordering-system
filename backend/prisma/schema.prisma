@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  items     MenuItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model MenuItem {
+  id          String      @id @default(uuid())
+  name        String
+  price       Float
+  description String
+  image       String // emoji or URL
+  available   Boolean     @default(true)
+  tags        String[] // e.g., ["vegetarian", "halal"]
+  prepTime    Int // in minutes
+  category    Category    @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  PREPARING
+  READY_TO_DELIVER
+  OUT_FOR_DELIVERY
+  DELIVERED
+  ISSUE
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+}
+
+enum PaymentMethod {
+  IMMEDIATE
+  CHECKOUT
+}
+
+model Order {
+  id                  String        @id @default(uuid())
+  orderNumber         String        @unique // e.g., ORD-1234
+  table               String
+  total               Float
+  status              OrderStatus   @default(PENDING)
+  paymentStatus       PaymentStatus @default(UNPAID)
+  paymentMethod       PaymentMethod?
+  items               OrderItem[]
+  deliveryIssueNotes  String?
+  deliveryConfirmedAt DateTime?
+  etaMinutes          Int?
+  etaTimestamp        DateTime?
+  rating              Int?
+  ratingComment       String?
+  closedAt            DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  FolioItem           FolioItem?
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   String
+  menuItem  MenuItem @relation(fields: [menuItemId], references: [id])
+  menuItemId String
+  name      String // Snapshot of name at time of order
+  price     Float // Snapshot of price at time of order
+  quantity  Int
+  note      String?
+}
+
+model FolioItem {
+  id        String   @id @default(uuid())
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   String   @unique
+  table     String
+  amount    Float
+  postedAt  DateTime @default(now())
+  status    String   @default("unpaid") // "unpaid" or "paid"
+  itemsSummary String // Concatenated list of items
+}
+
+model Log {
+  id        String   @id @default(uuid())
+  message   String
+  actor     String? // e.g., "Guest", "Staff: John"
+  createdAt DateTime @default(now())
+}

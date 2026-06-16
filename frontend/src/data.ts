@@ -1,4 +1,6 @@
-const DEFAULT_MENU = [
+import { MenuItem, TagConfig } from './types';
+
+export const DEFAULT_MENU: MenuItem[] = [
   {
     id: "m1",
     name: "Aether Truffle Burger",
@@ -111,8 +113,7 @@ const DEFAULT_MENU = [
   }
 ];
 
-// Tag display config
-const TAG_CONFIG = {
+export const TAG_CONFIG: Record<string, TagConfig> = {
   'vegetarian':     { label: '🌿 Vegetarian', color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.25)' },
   'vegan':          { label: '🍃 Vegan',       color: '#10b981', bg: 'rgba(16,185,129,0.07)', border: 'rgba(16,185,129,0.2)' },
   'halal':          { label: '☪️ Halal',        color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' },
@@ -123,16 +124,3 @@ const TAG_CONFIG = {
   'contains-seafood': { label: '🦐 Seafood',   color: '#06b6d4', bg: 'rgba(6,182,212,0.08)',   border: 'rgba(6,182,212,0.2)' },
   'contains-nuts':  { label: '🥜 Nuts',         color: '#d97706', bg: 'rgba(217,119,6,0.08)',   border: 'rgba(217,119,6,0.2)' },
 };
-
-function renderTagBadges(tags = []) {
-  if (!tags.length) return '';
-  return tags.map(t => {
-    const cfg = TAG_CONFIG[t];
-    if (!cfg) return '';
-    return `<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.border};margin-right:4px;margin-top:4px;">${cfg.label}</span>`;
-  }).join('');
-}
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = DEFAULT_MENU;
-}

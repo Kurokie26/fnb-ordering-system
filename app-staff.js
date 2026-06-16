@@ -6,6 +6,11 @@ let adminTab = 'menu';
 let logs = [];
 let currentUserRole = null;
 
+// Categories & Date Filters State
+let categoriesList = [];
+let salesStartDate = '';
+let salesEndDate = '';
+
 // Initialize App
 window.addEventListener('DOMContentLoaded', () => {
   currentUserRole = localStorage.getItem('aetheria_role') || null;
@@ -17,7 +22,7 @@ window.addEventListener('DOMContentLoaded', () => {
   applyStaffSession();
 });
 
-// Watch for changes from the Guest Kiosk in other tabs
+// Watch for changes from other tabs
 window.addEventListener('storage', (e) => {
   if (e.key === 'aetheria_orders') {
     orders = JSON.parse(e.newValue || '[]');
@@ -41,6 +46,16 @@ window.addEventListener('storage', (e) => {
   if (e.key === 'aetheria_logs') {
     logs = JSON.parse(e.newValue || '[]');
     renderLogs();
+  }
+  if (e.key === 'aetheria_categories' || e.key === 'aetheria_categories_trigger') {
+    const savedCats = localStorage.getItem('aetheria_categories');
+    if (savedCats) {
+      categoriesList = JSON.parse(savedCats);
+      updateCategoryDropdown();
+      if (currentScreen === 'admin-manager-screen' && adminTab === 'categories') {
+        renderAdminCategories();
+      }
+    }
   }
 });
 
@@ -70,6 +85,14 @@ function initData() {
       { time: getFormattedTime(), text: "Staff portal initialized." }
     ];
     localStorage.setItem('aetheria_logs', JSON.stringify(logs));
+  }
+
+  const savedCats = localStorage.getItem('aetheria_categories');
+  if (savedCats) {
+    categoriesList = JSON.parse(savedCats);
+  } else {
+    categoriesList = ['Mains', 'Drinks', 'Desserts', 'Sides'];
+    localStorage.setItem('aetheria_categories', JSON.stringify(categoriesList));
   }
 }
 
@@ -101,6 +124,7 @@ function applyStaffSession() {
     if (logoutBtn) logoutBtn.style.display = 'inline-block';
     if (sidebarRoleTitle) sidebarRoleTitle.textContent = "Backoffice Cockpit";
     
+    updateCategoryDropdown();
     // Default staff screen
     switchScreen('kitchen-monitor-screen');
   }
@@ -205,16 +229,52 @@ function renderKitchenDashboard() {
   const pendingContainer = document.getElementById('kitchen-pending-container');
   const preparingContainer = document.getElementById('kitchen-preparing-container');
   const readyContainer = document.getElementById('kitchen-ready-container');
+  const disputedContainer = document.getElementById('kitchen-disputed-container');
   
   if (!pendingContainer || !preparingContainer || !readyContainer) return;
   
   const pendingOrders = orders.filter(o => o.status === 'pending');
   const preparingOrders = orders.filter(o => o.status === 'preparing');
-  const readyOrders = orders.filter(o => o.status === 'ready_to_deliver' || o.status === 'out_for_delivery' || o.status === 'delivered' || o.status === 'issue');
+  const readyOrders = orders.filter(o => o.status === 'ready_to_deliver' || o.status === 'out_for_delivery' || o.status === 'delivered');
+  const disputedOrders = orders.filter(o => o.status === 'issue');
   
   document.getElementById('kitchen-pending-count').textContent = pendingOrders.length;
   document.getElementById('kitchen-preparing-count').textContent = preparingOrders.length;
   document.getElementById('kitchen-ready-count').textContent = readyOrders.length;
+  
+  if (disputedContainer) {
+    document.getElementById('kitchen-disputed-count').textContent = disputedOrders.length;
+    if (disputedOrders.length === 0) {
+      disputedContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size:13px; border: 1px dashed var(--border-color); border-radius:8px;">No active issues</div>`;
+    } else {
+      disputedContainer.innerHTML = disputedOrders.map(order => `
+        <div class="kitchen-order-card" style="border-color: var(--color-danger); box-shadow: 0 0 10px rgba(244,63,94,0.15);">
+          <div class="order-card-header">
+            <span class="order-num" style="color:var(--color-danger);">${order.id}</span>
+            <span class="order-table-badge" style="background:rgba(244,63,94,0.15); color:var(--color-danger);">Table ${order.table}</span>
+          </div>
+          <div style="font-size:12px; font-weight:600; color:var(--color-danger); margin-bottom: 6px;">⚠️ Guest reported issue!</div>
+          
+          <div style="background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.15); border-radius: 6px; padding: 8px; font-size: 12px; color: var(--color-danger); margin-bottom: 10px; text-align: left;">
+            <strong>Guest note:</strong> "${order.deliveryIssueNotes || 'No notes left'}"
+          </div>
+          
+          <div class="order-items-checklist" style="margin-bottom: 10px;">
+            ${order.items.map(item => `
+              <div style="font-size:12px; opacity:0.8; text-align: left; margin-bottom: 4px;">
+                • ${item.quantity}x ${item.name}
+                ${item.note ? `<div style="color:var(--color-primary); font-size:11px; margin-left: 10px; font-style:italic;">✍️ Note: ${item.note}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+          
+          <div class="kitchen-actions">
+            <button class="btn-kitchen-action accept" style="border-color: rgba(244,63,94,0.3); color: var(--color-danger); background: rgba(244,63,94,0.05);" onclick="reprepareOrder('${order.id}')">Re-prepare Food</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
   
   if (pendingOrders.length === 0) {
     pendingContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size:13px; border: 1px dashed var(--border-color); border-radius:8px;">No pending orders</div>`;
@@ -228,8 +288,9 @@ function renderKitchenDashboard() {
         <div class="order-time">Received ${getElapsedTime(order.createdAt)}</div>
         <div class="order-items-checklist">
           ${order.items.map(item => `
-            <div class="checklist-item">
+            <div class="checklist-item" style="text-align: left; display: block; margin-bottom: 4px;">
               <span>• ${item.quantity}x <strong>${item.name}</strong></span>
+              ${item.note ? `<div style="font-size:11px; color:var(--color-primary); margin-left: 10px; font-style:italic;">✍️ Note: ${item.note}</div>` : ''}
             </div>
           `).join('')}
         </div>
@@ -252,9 +313,10 @@ function renderKitchenDashboard() {
         <div class="order-time">Prep started ${getElapsedTime(order.createdAt)}</div>
         <div class="order-items-checklist">
           ${order.items.map((item, idx) => `
-            <label class="checklist-item" id="chk-label-${order.id}-${idx}">
+            <label class="checklist-item" id="chk-label-${order.id}-${idx}" style="text-align: left; display:block; margin-bottom: 4px;">
               <input type="checkbox" onchange="toggleKitchenCheckbox(this, 'chk-label-${order.id}-${idx}')">
               <span>${item.quantity}x <strong>${item.name}</strong></span>
+              ${item.note ? `<div style="font-size:11px; color:var(--color-primary); margin-left: 20px; font-style:italic;">✍️ Note: ${item.note}</div>` : ''}
             </label>
           `).join('')}
         </div>
@@ -281,9 +343,6 @@ function renderKitchenDashboard() {
       } else if (order.status === 'delivered') {
         statusText = '🛎️ Arrived - Awaiting Guest Confirm';
         statusColor = 'var(--color-purple)';
-      } else if (order.status === 'issue') {
-        statusText = '⚠️ Issue Reported!';
-        statusColor = 'var(--color-danger)';
       }
       
       return `
@@ -293,20 +352,11 @@ function renderKitchenDashboard() {
             <span class="order-table-badge">Table ${order.table}</span>
           </div>
           <div style="font-size:12px; font-weight: 600; color: ${statusColor};">${statusText}</div>
-          ${order.status === 'issue' ? `
-            <div style="background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.2); border-radius: 6px; padding: 8px; font-size: 12px; color: var(--color-danger);">
-              <strong>Guest note:</strong> "${order.deliveryIssueNotes || 'No notes left'}"
-            </div>
-            <div class="kitchen-actions">
-              <button class="btn-kitchen-action accept" style="border-color: rgba(245,158,11,0.3); color: var(--color-primary);" onclick="reprepareOrder('${order.id}')">Re-prepare Food</button>
-            </div>
-          ` : `
-            <div class="order-items-checklist">
-              ${order.items.map(item => `
-                <div style="font-size:12px; opacity:0.8;">• ${item.quantity}x ${item.name}</div>
-              `).join('')}
-            </div>
-          `}
+          <div class="order-items-checklist" style="margin-top: 8px;">
+            ${order.items.map(item => `
+              <div style="font-size:12px; opacity:0.8; text-align: left;">• ${item.quantity}x ${item.name}</div>
+            `).join('')}
+          </div>
         </div>
       `;
     }).join('');
@@ -488,15 +538,32 @@ function switchAdminTab(tab) {
   adminTab = tab;
   
   const btnMenu = document.getElementById('btn-tab-menu');
+  const btnCategories = document.getElementById('btn-tab-categories');
   const btnSales = document.getElementById('btn-tab-sales');
   
+  // Reset all active classes
+  [btnMenu, btnCategories, btnSales].forEach(btn => {
+    if (btn) btn.classList.remove('active');
+  });
+  
+  const formCard = document.getElementById('admin-form-container');
+  if (formCard) {
+    if (tab === 'menu') {
+      formCard.style.display = 'block';
+    } else {
+      formCard.style.display = 'none';
+    }
+  }
+  
   if (tab === 'menu') {
-    btnMenu.classList.add('active');
-    btnSales.classList.remove('active');
+    if (btnMenu) btnMenu.classList.add('active');
     renderAdminMenuTable();
-  } else {
-    btnSales.classList.add('active');
-    btnMenu.classList.remove('active');
+    updateCategoryDropdown();
+  } else if (tab === 'categories') {
+    if (btnCategories) btnCategories.classList.add('active');
+    renderAdminCategories();
+  } else if (tab === 'sales') {
+    if (btnSales) btnSales.classList.add('active');
     renderAdminSales();
   }
 }
@@ -519,6 +586,8 @@ function renderAdminMenuTable() {
             <th>Name</th>
             <th>Category</th>
             <th>Price</th>
+            <th>Prep</th>
+            <th>Tags</th>
             <th>Availability</th>
             <th style="text-align: right;">Actions</th>
           </tr>
@@ -530,6 +599,12 @@ function renderAdminMenuTable() {
               <td style="font-weight:600;">${item.name}</td>
               <td>${item.category}</td>
               <td style="font-weight:600; color:var(--color-primary);">$${item.price.toFixed(2)}</td>
+              <td>~${item.prepTime || 10}m</td>
+              <td>
+                <div style="display:flex; flex-wrap:wrap; gap:4px; max-width:180px;">
+                  ${item.tags && item.tags.length > 0 ? item.tags.map(t => `<span style="font-size:9px; background:rgba(255,255,255,0.06); padding:2px 5px; border-radius:4px; text-transform:uppercase;">${t}</span>`).join('') : '<span style="color:var(--text-muted); font-size:11px;">none</span>'}
+                </div>
+              </td>
               <td>
                 <label class="toggle-switch">
                   <input type="checkbox" ${item.available !== false ? 'checked' : ''} onchange="toggleItemAvailability('${item.id}', this.checked)">
@@ -568,6 +643,13 @@ function editMenuItem(itemId) {
   document.getElementById('item-category').value = item.category;
   document.getElementById('item-image').value = item.image;
   document.getElementById('item-desc').value = item.description;
+  document.getElementById('item-preptime').value = item.prepTime || 10;
+  
+  // Set checkboxes
+  const checkboxes = document.querySelectorAll('input[name="dietary-tag"]');
+  checkboxes.forEach(cb => {
+    cb.checked = item.tags && item.tags.includes(cb.value);
+  });
   
   document.getElementById('form-action-title').textContent = "Edit Menu Item";
   document.getElementById('btn-cancel-edit').style.display = 'block';
@@ -578,6 +660,12 @@ function editMenuItem(itemId) {
 function cancelEditMenuItem() {
   document.getElementById('edit-item-id').value = "";
   document.getElementById('menu-item-form').reset();
+  
+  // Reset checkboxes
+  const checkboxes = document.querySelectorAll('input[name="dietary-tag"]');
+  checkboxes.forEach(cb => {
+    cb.checked = false;
+  });
   
   document.getElementById('form-action-title').textContent = "Add Menu Item";
   document.getElementById('btn-cancel-edit').style.display = 'none';
@@ -592,6 +680,10 @@ function saveMenuItem(e) {
   const category = document.getElementById('item-category').value;
   const image = document.getElementById('item-image').value.trim();
   const description = document.getElementById('item-desc').value.trim();
+  const prepTime = parseInt(document.getElementById('item-preptime').value) || 10;
+  
+  const checkboxes = document.querySelectorAll('input[name="dietary-tag"]:checked');
+  const tags = Array.from(checkboxes).map(cb => cb.value);
   
   if (id) {
     const item = menu.find(i => i.id === id);
@@ -601,6 +693,8 @@ function saveMenuItem(e) {
       item.category = category;
       item.image = image;
       item.description = description;
+      item.prepTime = prepTime;
+      item.tags = tags;
       addLog(`Admin updated item "${name}".`);
       showToast("Menu item updated!", "success");
     }
@@ -613,6 +707,8 @@ function saveMenuItem(e) {
       category,
       image,
       description,
+      prepTime,
+      tags,
       available: true
     });
     addLog(`Admin added new menu item "${name}" ($${price.toFixed(2)}).`);
@@ -645,34 +741,82 @@ function deleteMenuItem(itemId) {
 function renderAdminSales() {
   const container = document.getElementById('admin-main-pane');
   if (!container) return;
-  
-  const paidOrders = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'paid');
-  const unpaidOrders = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
+
+  // Apply date range filter
+  let filteredOrders = orders;
+  if (salesStartDate) {
+    const start = new Date(salesStartDate);
+    filteredOrders = filteredOrders.filter(o => new Date(o.createdAt) >= start);
+  }
+  if (salesEndDate) {
+    const end = new Date(salesEndDate);
+    end.setHours(23, 59, 59, 999);
+    filteredOrders = filteredOrders.filter(o => new Date(o.createdAt) <= end);
+  }
+
+  const completed = filteredOrders.filter(o => o.status === 'completed');
+  const paidOrders = completed.filter(o => o.paymentStatus === 'paid');
+  const unpaidOrders = completed.filter(o => o.paymentStatus === 'unpaid');
   const activeQueued = orders.filter(o => o.status !== 'completed');
-  
+
   const totalPaidRevenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
   const totalUnpaidLedger = unpaidOrders.reduce((sum, o) => sum + o.total, 0);
-  
+
+  // Average ETA (prepTime-based) from completed orders
+  const ordersWithEta = completed.filter(o => o.etaMinutes);
+  const avgEta = ordersWithEta.length > 0
+    ? Math.round(ordersWithEta.reduce((s, o) => s + o.etaMinutes, 0) / ordersWithEta.length)
+    : null;
+
+  // Guest ratings summary
+  const ratedOrders = completed.filter(o => o.rating !== null && o.rating !== undefined);
+  const avgRating = ratedOrders.length > 0
+    ? (ratedOrders.reduce((s, o) => s + o.rating, 0) / ratedOrders.length).toFixed(1)
+    : null;
+
+  const issueCount = orders.filter(o => o.status === 'issue').length
+    + completed.filter(o => o.deliveryIssueNotes).length;
+
   container.innerHTML = `
-    <div class="stats-grid">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+      <h3 style="font-size:15px; font-weight:600;">Sales &amp; Analytics Dashboard</h3>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <label style="font-size:12px; color:var(--text-muted);">From</label>
+        <input type="date" id="sales-start-date" value="${salesStartDate}" onchange="setSalesDateFilter()" class="form-control" style="padding:5px 8px; font-size:12px; width:140px;">
+        <label style="font-size:12px; color:var(--text-muted);">To</label>
+        <input type="date" id="sales-end-date" value="${salesEndDate}" onchange="setSalesDateFilter()" class="form-control" style="padding:5px 8px; font-size:12px; width:140px;">
+        <button onclick="clearSalesFilter()" class="btn-reset" style="font-size:12px; padding:5px 12px;">Clear</button>
+      </div>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:20px;">
       <div class="stat-card">
         <span class="stat-label">Paid Revenue</span>
         <span class="stat-value revenue">$${totalPaidRevenue.toFixed(2)}</span>
       </div>
-      
       <div class="stat-card">
         <span class="stat-label">Checkout Ledger</span>
         <span class="stat-value pending">$${totalUnpaidLedger.toFixed(2)}</span>
       </div>
-      
       <div class="stat-card">
         <span class="stat-label">Active Orders</span>
         <span class="stat-value" style="color:var(--color-info);">${activeQueued.length}</span>
       </div>
-      
       <div class="stat-card">
-        <span class="stat-label">Total Transactions</span>
-        <span class="stat-value">${orders.length}</span>
+        <span class="stat-label">Transactions</span>
+        <span class="stat-value">${completed.length}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Avg. ETA</span>
+        <span class="stat-value" style="color:var(--color-info);">${avgEta !== null ? avgEta + 'm' : 'N/A'}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Guest Rating</span>
+        <span class="stat-value" style="color:var(--color-primary);">${avgRating !== null ? '⭐ ' + avgRating : 'N/A'}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Issue Reports</span>
+        <span class="stat-value" style="color:${issueCount > 0 ? 'var(--color-danger)' : 'var(--color-success)'};">${issueCount}</span>
       </div>
     </div>
 
@@ -683,23 +827,28 @@ function renderAdminSales() {
           <tr>
             <th>Order Ref</th>
             <th>Table</th>
-            <th>Time Closed</th>
-            <th>Total Billing</th>
-            <th>Checkout Settlement</th>
+            <th>Date/Time</th>
+            <th>ETA</th>
+            <th>Rating</th>
+            <th>Total</th>
+            <th>Settlement</th>
           </tr>
         </thead>
         <tbody>
-          ${orders.filter(o => o.status === 'completed').length === 0 ? `
-            <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">No transaction records found.</td></tr>
-          ` : orders.filter(o => o.status === 'completed').map(o => `
+          ${completed.length === 0 ? `
+            <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">No transaction records found.</td></tr>
+          ` : completed.map(o => `
             <tr>
               <td style="font-family:monospace; font-weight:600;">${o.id}</td>
               <td style="font-weight:600;">Table ${o.table}</td>
-              <td>${new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+              <td>${new Date(o.createdAt).toLocaleDateString([], {month:'short', day:'numeric'})}&nbsp;
+                  ${new Date(o.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
+              <td>${o.etaMinutes ? o.etaMinutes + 'm' : '—'}</td>
+              <td>${o.rating ? '⭐'.repeat(o.rating) : '—'}</td>
               <td style="font-weight:600; color:var(--color-primary);">$${o.total.toFixed(2)}</td>
               <td>
                 <span class="nav-badge ${o.paymentStatus === 'paid' ? 'success' : 'info'}" style="font-size:10px; border-radius:4px; padding:3px 6px;">
-                  ${o.paymentStatus === 'paid' ? 'Paid (Card)' : 'Room/Table Bill'}
+                  ${o.paymentStatus === 'paid' ? 'Paid (Card)' : 'Room Bill'}
                 </span>
               </td>
             </tr>
@@ -708,6 +857,18 @@ function renderAdminSales() {
       </table>
     </div>
   `;
+}
+
+function setSalesDateFilter() {
+  salesStartDate = document.getElementById('sales-start-date').value;
+  salesEndDate = document.getElementById('sales-end-date').value;
+  renderAdminSales();
+}
+
+function clearSalesFilter() {
+  salesStartDate = '';
+  salesEndDate = '';
+  renderAdminSales();
 }
 
 // Utilities & System
@@ -744,7 +905,7 @@ function showToast(message, type = 'info') {
   if (type === 'danger') icon = '🚨';
   
   toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
-  container.appendChild(toast);
+  if (container) container.appendChild(toast);
   
   setTimeout(() => {
     toast.classList.add('fade-out');
@@ -752,4 +913,114 @@ function showToast(message, type = 'info') {
       toast.remove();
     }, 300);
   }, 3200);
+}
+
+// ─── Category Management ───────────────────────────────────────────────────
+function updateCategoryDropdown() {
+  const select = document.getElementById('item-category');
+  if (!select) return;
+  select.innerHTML = categoriesList.map(cat =>
+    `<option value="${cat}">${cat}</option>`
+  ).join('');
+}
+
+function renderAdminCategories() {
+  const container = document.getElementById('admin-main-pane');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="font-size:15px; font-weight:600;">Category Management</h3>
+      <span style="font-size:12px; color:var(--text-muted);">${categoriesList.length} categories</span>
+    </div>
+
+    <div class="admin-form-card" style="margin-bottom:20px; padding:16px;">
+      <h4 style="font-size:13px; font-weight:600; margin-bottom:12px; color:var(--text-secondary);">Add New Category</h4>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <input type="text" id="new-category-input" class="form-control" placeholder="e.g. Soups, Salads, Specials…"
+               style="flex:1;" onkeydown="if(event.key==='Enter') addCategory()">
+        <button class="btn-form-submit" style="padding:9px 18px; white-space:nowrap;" onclick="addCategory()">
+          + Add
+        </button>
+      </div>
+    </div>
+
+    <div class="menu-table-container">
+      <table class="menu-table" style="font-size:13px;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Category Name</th>
+            <th>Items Count</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${categoriesList.length === 0 ? `
+            <tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:20px;">No categories yet.</td></tr>
+          ` : categoriesList.map((cat, idx) => {
+            const count = menu.filter(item => item.category === cat).length;
+            return `
+              <tr>
+                <td style="color:var(--text-muted);">${idx + 1}</td>
+                <td style="font-weight:600;" id="cat-label-${idx}">${cat}</td>
+                <td>${count} item${count !== 1 ? 's' : ''}</td>
+                <td style="text-align:right;">
+                  <button class="btn-table-action edit" onclick="renameCategory(${idx})">✏️ Rename</button>
+                  <button class="btn-table-action delete" onclick="deleteCategory(${idx})" ${count > 0 ? 'disabled title="Remove all items first"' : ''}>
+                    🗑️ Delete
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function addCategory() {
+  const input = document.getElementById('new-category-input');
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) { showToast('Please enter a category name.', 'danger'); return; }
+  if (categoriesList.map(c => c.toLowerCase()).includes(name.toLowerCase())) {
+    showToast('Category already exists.', 'danger'); return;
+  }
+  categoriesList.push(name);
+  localStorage.setItem('aetheria_categories', JSON.stringify(categoriesList));
+  addLog(`Admin added category "${name}".`);
+  showToast(`Category "${name}" added.`, 'success');
+  renderAdminCategories();
+}
+
+function renameCategory(idx) {
+  const oldName = categoriesList[idx];
+  const newName = prompt(`Rename "${oldName}" to:`, oldName);
+  if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
+  const trimmed = newName.trim();
+  if (categoriesList.map(c => c.toLowerCase()).includes(trimmed.toLowerCase())) {
+    showToast('A category with that name already exists.', 'danger'); return;
+  }
+  // Update all menu items that use old category
+  menu.forEach(item => { if (item.category === oldName) item.category = trimmed; });
+  localStorage.setItem('aetheria_menu', JSON.stringify(menu));
+  categoriesList[idx] = trimmed;
+  localStorage.setItem('aetheria_categories', JSON.stringify(categoriesList));
+  addLog(`Admin renamed category "${oldName}" → "${trimmed}".`);
+  showToast(`Renamed to "${trimmed}".`, 'success');
+  renderAdminCategories();
+}
+
+function deleteCategory(idx) {
+  const name = categoriesList[idx];
+  const count = menu.filter(item => item.category === name).length;
+  if (count > 0) { showToast('Remove all items in this category first.', 'danger'); return; }
+  if (!confirm(`Delete category "${name}"?`)) return;
+  categoriesList.splice(idx, 1);
+  localStorage.setItem('aetheria_categories', JSON.stringify(categoriesList));
+  addLog(`Admin deleted category "${name}".`);
+  showToast(`Category "${name}" deleted.`, 'info');
+  renderAdminCategories();
 }
